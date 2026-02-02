@@ -7,7 +7,7 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-
+# Load ML artifacts
 model = pickle.load(open("model.pkl", "rb"))
 scaler = pickle.load(open("scaler.pkl", "rb"))
 label_encoders = pickle.load(open("label_encoders.pkl", "rb"))
@@ -35,7 +35,7 @@ def predict():
         total_rooms = bedrooms + bathrooms
         bath_bed_ratio = bathrooms / (bedrooms + 1)
 
-        input_data = np.array([[
+        input_data = np.array([[ 
             area, bedrooms, bathrooms, stories, parking,
             has_pool, has_garage, has_ac,
             total_rooms, bath_bed_ratio
@@ -51,5 +51,7 @@ def predict():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+# ✅ RENDER-SAFE FLASK START
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
