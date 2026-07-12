@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucknow House Price Predictor</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="container">
+        <div class="nav-brand">
+            <i class="fas fa-building"></i>
+            <span>Lucknow House Price Predictor</span>
+        </div>
+        <div class="nav-links">
+            <a href="#prediction">Predict</a>
+            <a href="#comparison">Model Comparison</a>
+        </div>
+    </div>
+</nav>
+
+<section class="hero">
+    <div class="container">
+        <h1>Predict Lucknow Home Prices Instantly</h1>
+        <p>Machine learning powered price estimation for the Lucknow housing market</p>
+        <div class="hero-badges">
+            <span class="badge"><i class="fas fa-database"></i> 1,000 houses</span>
+            <span class="badge"><i class="fas fa-chart-line"></i> R² 0.97</span>
+            <span class="badge"><i class="fas fa-robot"></i> 4 models compared</span>
+        </div>
+    </div>
+</section>
+
+<section id="prediction" class="prediction-section">
+    <div class="container">
+        <h2>Enter Property Details</h2>
+
+        <form id="predictionForm" class="prediction-form" novalidate>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="area">Area (sq ft)</label>
+                    <input type="number" id="area" required placeholder="e.g. 2500" min="100" max="50000">
+                    <span class="field-error" id="error-area"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="bedrooms">Bedrooms</label>
+                    <input type="number" id="bedrooms" required min="1" max="10">
+                    <span class="field-error" id="error-bedrooms"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="bathrooms">Bathrooms</label>
+                    <input type="number" id="bathrooms" required min="1" max="10">
+                    <span class="field-error" id="error-bathrooms"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="stories">Stories</label>
+                    <input type="number" id="stories" required min="1" max="5">
+                    <span class="field-error" id="error-stories"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="parking">Parking Spaces</label>
+                    <input type="number" id="parking" required min="0" max="10">
+                    <span class="field-error" id="error-parking"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="has_pool">Swimming Pool</label>
+                    <select id="has_pool">
+                        <option value="no">No</option>
+                        <option value="yes">Yes</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="has_garage">Garage</label>
+                    <select id="has_garage">
+                        <option value="no">No</option>
+                        <option value="yes">Yes</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="has_ac">Air Conditioning</label>
+                    <select id="has_ac">
+                        <option value="no">No</option>
+                        <option value="yes">Yes</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="formError" class="form-error hidden">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="formErrorMessage"></span>
+            </div>
+
+            <button type="submit" class="btn-predict" id="predictBtn">
+                <i class="fas fa-calculator"></i> Predict Price
+            </button>
+        </form>
+
+        <div id="loadingSpinner" class="loading-spinner hidden">
+            <div class="spinner"></div>
+            <p>Analyzing the Lucknow housing market...</p>
+            <p class="warmup-note">(Free tier server may take ~30s to wake up)</p>
+        </div>
+
+        <div id="resultSection" class="result-section hidden">
+            <div class="result-card">
+                <h3>Estimated Price</h3>
+                <div class="price-display">
+                    ₹ <span id="predictedPrice">0</span>
+                </div>
+                <div class="confidence-interval">
+                    95% confidence: ₹<span id="ciLow">0</span> — ₹<span id="ciHigh">0</span>
+                    <span class="confidence-badge">±15%</span>
+                </div>
+                <div class="result-footer">
+                    <span class="result-model"><i class="fas fa-microchip"></i> Model: <span id="modelUsed">—</span></span>
+                </div>
+                <button onclick="resetForm()" class="btn-secondary">
+                    <i class="fas fa-redo"></i> Predict Again
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="comparison" class="metrics-section">
+    <div class="container">
+        <h2>Model Performance Comparison</h2>
+        <p class="section-subtitle">We trained 4 models on Lucknow housing data and picked the best by RMSE</p>
+
+        <div id="comparisonTableWrapper">
+            <div class="table-loading" id="tableLoading">
+                <div class="spinner"></div>
+                <p>Loading model comparison...</p>
+            </div>
+            <div class="table-wrapper hidden" id="tableWrapper">
+                <table class="comparison-table" id="comparisonTable">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>R² Score</th>
+                            <th>RMSE (₹)</th>
+                            <th>MAE (₹)</th>
+                            <th class="rank-col">Rank</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparisonBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="dataset-note">
+            <i class="fas fa-database"></i>
+            <span>Trained on <strong>1,000</strong> synthetic house listings with <strong>8 features</strong> (area, bedrooms, bathrooms, stories, parking, pool, garage, AC)</span>
+        </div>
+    </div>
+</section>
+
+<section class="importance-section">
+    <div class="container">
+        <h2>What Drives Lucknow Home Prices?</h2>
+        <p class="section-subtitle">SHAP analysis reveals the top price determinants</p>
+        <div class="importance-image-wrapper">
+            <div class="importance-loading" id="importanceLoading">
+                <div class="spinner"></div>
+                <p>Loading feature importance...</p>
+            </div>
+            <img id="importanceImage" class="importance-image hidden"
+                 alt="SHAP Feature Importance for Lucknow House Prices"
+                 src="">
+        </div>
+        <div id="importanceRanking" class="importance-ranking hidden">
+            <h4>Top Price Drivers</h4>
+            <ol id="importanceList"></ol>
+        </div>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="container">
+        <p class="footer-title">Lucknow House Price Predictor</p>
+        <p>Created by Abhishek Kasaudhan</p>
+    </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
