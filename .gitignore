@@ -22,3 +22,8 @@ Thumbs.db
 
 # Vercel
 .vc/
+
+# Claude
+.claude/
+.vercel
+.env*

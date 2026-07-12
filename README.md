@@ -8,8 +8,8 @@
 
 A full-stack machine learning web application that predicts house prices for the Lucknow housing market. Compares 4 ML models, shows SHAP feature importance, and provides predictions with confidence intervals.
 
-**Live Demo:** [Coming Soon — Deploying Frontend](#-deployment)
-**API:** `https://your-app.onrender.com/`
+**Live Demo:** [lucknow-house-price.vercel.app](https://lucknow-house-price.vercel.app)
+**API:** `https://lucknow-house-price-api.onrender.com/`
 
 ---
 
@@ -106,7 +106,7 @@ python -m http.server 8080
 # or: npx serve .
 ```
 
-Open `http://localhost:8080` in your browser. The frontend connects to `http://localhost:10000`.
+Open `http://localhost:8080` in your browser. The frontend connects to `https://lucknow-house-price-api.onrender.com`.
 
 ### Training
 
