@@ -1,83 +1,50 @@
-# Implementation Plan: Lucknow House Price Predictor — Phase 2 Upgrades
+# Implementation Plan: Phase 2 — Docker Containerization & CI/CD Pipeline
 
 ## Overview
 
-Upgrade the existing house price prediction project with multi-model comparison (4 models), SHAP feature importance, API validation, a deployed frontend with confidence intervals, and a professional README. Reframe as a Lucknow-specific predictor.
+Containerize the Flask API with Docker and set up GitHub Actions CI/CD. Two tasks: (1) Dockerfile + configuration, (2) CI/CD pipeline with Render auto-deploy.
 
 ## Architecture Decisions
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Neural net | MLPRegressor (scikit-learn) | Avoids heavy TensorFlow dep; keeps deployment small |
-| Frontend host | Vercel | User preference; good free tier for static sites |
-| Dataset framing | Lucknow Housing Predictor | Local angle = original portfolio piece |
-| Confidence interval | Fixed ±15% band | Simple; good enough for demo |
-| Best model picker | Lowest RMSE across 4 models | Standard ML evaluation practice |
+| Base image | `python:3.12-slim` | Smallest official Python image that supports scikit-learn |
+| Model strategy | Copy pre-trained `.pkl` files | Faster builds, no retraining cost |
+| WSGI server | gunicorn (inside container) | Production-grade, already in requirements |
+| Deploy trigger | Render Deploy Hook (webhook URL) | Simplest auto-deploy — no Render API key needed |
+| CD trigger | Push to `main` branch | Standard GitOps pattern |
 
 ## Dependency Graph
 
 ```
-advanced_training.ipynb
+Dockerfile + .dockerignore
     │
-    ├── model.pkl (replaced)          ──→ API serves predictions
-    ├── model_metrics.pkl (NEW)       ──→ API GET /metrics ──→ Frontend comparison table
-    ├── feature_importance.png (NEW)  ──→ API GET /feature-importance ──→ Frontend displays
+    ├── make docker-build ──→ Image builds locally
     │
-    └── scaler.pkl, label_encoders.pkl, feature_columns.pkl (regenerated)
-```
-
-```
-Backend API (app.py)
-    │
-    ├── POST /predict                 ──→ Frontend form submit
-    │   └── input validation (NEW)
-    │
-    ├── GET /metrics (NEW)            ──→ Frontend comparison table
-    ├── GET /feature-importance (NEW) ──→ Frontend image display
-    └── GET / (health check)
-```
-
-```
-Frontend (HTML/JS/CSS)
-    │
-    ├── Form with dropdowns/sliders
-    ├── Result card with ±15% CI (NEW)
-    ├── Model comparison table (NEW)
-    ├── Feature importance image (NEW)
-    └── Deployed to Vercel (NEW)
+    └── ci.yml (modified)
+            │
+            ├── make check ──→ format + lint + test (every push)
+            │
+            └── Deploy step ──→ POST to Render hook (push to main)
 ```
 
 ## Implementation Order
 
-**Must be sequential within each phase. Some phases can be parallel.**
-
 ```
-Phase 1: ML Training (foundation)
-  Task 1: Advanced training notebook
+Task 1: Dockerfile + .dockerignore
     ↓
-Phase 2: Backend API upgrades (depends on Task 1)
-  Task 2: Input validation + metrics endpoints
-    ↓
-Phase 3: Frontend upgrades (depends on Task 2)
-  Task 3: UI updates for CI + comparison + importance
-  Task 4: Deploy frontend to Vercel
-    ↓
-Phase 4: Documentation (can overlap with 3)
-  Task 5: README rewrite
-    ↓
-Phase 5: Polish + Verification
-  Task 6: End-to-end verification
+Task 2: CI/CD pipeline (ci.yml upgrade)
 ```
 
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| XGBoost install issues on Windows | Medium | Pin working version; fall back to just 3 models |
-| CORS issues between Vercel frontend and Render API | Medium | Configure CORS properly; use env vars for API URL |
-| SHAP computation slow on 1000 rows | Low | Use PermutationImportance as fallback |
-| Render API cold start slow | Low | Add loading states in frontend; note in README |
+| scikit-learn version mismatch in container | Medium | Pin `scikit-learn==1.7.0` in requirements to match local version |
+| Image too large (> 1.5GB) | Low | `.dockerignore` excludes notebooks, cache; slim base image |
+| Render deploy hook fires but fails silently | Medium | Add `curl --fail` flag; log deploy hook response in CI |
+| gunicorn not installed in container | Low | Already in `requirements.txt` |
 
 ## Open Questions
 
-None — all 4 decisions resolved in the PRD.
+None resolved. User provided Render deploy hook URL.

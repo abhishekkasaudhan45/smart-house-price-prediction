@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+.git/
+.gitignore
+*.csv
+*.ipynb
+README.md
+venv/
+.venv/
