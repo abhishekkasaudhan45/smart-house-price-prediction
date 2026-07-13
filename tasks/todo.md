@@ -9,7 +9,7 @@
 **Acceptance criteria:**
 - [ ] `Dockerfile` exists at `Backend_API/Dockerfile`
 - [ ] `.dockerignore` excludes `__pycache__`, notebooks, .git, training data
-- [ ] `make docker-build` exits 0 and produces an image named `lucknow-house-predictor`
+- [ ] `make docker-build` exits 0 and produces an image named `house-predictor`
 - [ ] `make docker-run` starts the container, `curl localhost:10000/` returns 200
 - [ ] `make docker-stop` stops and removes the container
 - [ ] `POST /predict` returns a prediction from inside the container

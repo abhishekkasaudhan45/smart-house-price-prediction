@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lucknow House Price Predictor</title>
+    <title>Smart House Price Predictor</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -16,7 +16,7 @@
     <div class="container">
         <div class="nav-brand">
             <i class="fas fa-building"></i>
-            <span>Lucknow House Price Predictor</span>
+            <span>Smart House Price Predictor</span>
         </div>
         <div class="nav-links">
             <a href="#prediction">Predict</a>
@@ -27,11 +27,11 @@
 
 <section class="hero">
     <div class="container">
-        <h1>Predict Lucknow Home Prices Instantly</h1>
-        <p>Machine learning powered price estimation for the Lucknow housing market</p>
+        <h1>Predict Home Prices Instantly</h1>
+        <p>Machine learning powered price estimation on real housing data (Kaggle)</p>
         <div class="hero-badges">
-            <span class="badge"><i class="fas fa-database"></i> 1,000 houses</span>
-            <span class="badge"><i class="fas fa-chart-line"></i> R² 0.97</span>
+            <span class="badge"><i class="fas fa-database"></i> 1,460 houses</span>
+            <span class="badge"><i class="fas fa-chart-line"></i> R² 0.87</span>
             <span class="badge"><i class="fas fa-robot"></i> 4 models compared</span>
         </div>
     </div>
@@ -44,33 +44,43 @@
         <form id="predictionForm" class="prediction-form" novalidate>
             <div class="form-grid">
                 <div class="form-group">
-                    <label for="area">Area (sq ft)</label>
-                    <input type="number" id="area" required placeholder="e.g. 2500" min="100" max="50000">
+                    <label for="area">Living Area (sq ft)</label>
+                    <input type="number" id="area" required placeholder="e.g. 2000" min="200" max="30000">
                     <span class="field-error" id="error-area"></span>
                 </div>
 
                 <div class="form-group">
                     <label for="bedrooms">Bedrooms</label>
-                    <input type="number" id="bedrooms" required min="1" max="10">
+                    <input type="number" id="bedrooms" required min="0" max="10" placeholder="e.g. 3">
                     <span class="field-error" id="error-bedrooms"></span>
                 </div>
 
                 <div class="form-group">
                     <label for="bathrooms">Bathrooms</label>
-                    <input type="number" id="bathrooms" required min="1" max="10">
+                    <input type="number" id="bathrooms" required min="0" max="10" step="0.5" placeholder="e.g. 2">
                     <span class="field-error" id="error-bathrooms"></span>
                 </div>
 
                 <div class="form-group">
-                    <label for="stories">Stories</label>
-                    <input type="number" id="stories" required min="1" max="5">
-                    <span class="field-error" id="error-stories"></span>
+                    <label for="overall_qual">Overall Quality (1-10)</label>
+                    <select id="overall_qual">
+                        <option value="1">1 — Very Poor</option>
+                        <option value="2">2 — Poor</option>
+                        <option value="3">3 — Below Average</option>
+                        <option value="4">4 — Average</option>
+                        <option value="5" selected>5 — Fair</option>
+                        <option value="6">6 — Above Average</option>
+                        <option value="7">7 — Good</option>
+                        <option value="8">8 — Very Good</option>
+                        <option value="9">9 — Excellent</option>
+                        <option value="10">10 — Luxury</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="parking">Parking Spaces</label>
-                    <input type="number" id="parking" required min="0" max="10">
-                    <span class="field-error" id="error-parking"></span>
+                    <label for="year_built">Year Built</label>
+                    <input type="number" id="year_built" required min="1850" max="2026" placeholder="e.g. 2005">
+                    <span class="field-error" id="error-year_built"></span>
                 </div>
 
                 <div class="form-group">
@@ -90,7 +100,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="has_ac">Air Conditioning</label>
+                    <label for="has_ac">Central Air Conditioning</label>
                     <select id="has_ac">
                         <option value="no">No</option>
                         <option value="yes">Yes</option>
@@ -110,7 +120,7 @@
 
         <div id="loadingSpinner" class="loading-spinner hidden">
             <div class="spinner"></div>
-            <p>Analyzing the Lucknow housing market...</p>
+            <p>Analyzing the housing market...</p>
             <p class="warmup-note">(Free tier server may take ~30s to wake up)</p>
         </div>
 
@@ -118,10 +128,10 @@
             <div class="result-card">
                 <h3>Estimated Price</h3>
                 <div class="price-display">
-                    ₹ <span id="predictedPrice">0</span>
+                    $<span id="predictedPrice">0</span>
                 </div>
                 <div class="confidence-interval">
-                    95% confidence: ₹<span id="ciLow">0</span> — ₹<span id="ciHigh">0</span>
+                    95% confidence: $<span id="ciLow">0</span> — $<span id="ciHigh">0</span>
                     <span class="confidence-badge">±15%</span>
                 </div>
                 <div class="result-footer">
@@ -138,7 +148,7 @@
 <section id="comparison" class="metrics-section">
     <div class="container">
         <h2>Model Performance Comparison</h2>
-        <p class="section-subtitle">We trained 4 models on Lucknow housing data and picked the best by RMSE</p>
+        <p class="section-subtitle">We trained 4 models on Kaggle housing data (1,460 houses, 5 features + amenities)</p>
 
         <div id="comparisonTableWrapper">
             <div class="table-loading" id="tableLoading">
@@ -151,8 +161,8 @@
                         <tr>
                             <th>Model</th>
                             <th>R² Score</th>
-                            <th>RMSE (₹)</th>
-                            <th>MAE (₹)</th>
+                            <th>RMSE ($)</th>
+                            <th>MAE ($)</th>
                             <th class="rank-col">Rank</th>
                         </tr>
                     </thead>
@@ -164,22 +174,22 @@
 
         <div class="dataset-note">
             <i class="fas fa-database"></i>
-            <span>Trained on <strong>1,000</strong> synthetic house listings with <strong>8 features</strong> (area, bedrooms, bathrooms, stories, parking, pool, garage, AC)</span>
+            <span>Trained on <strong>1,460</strong> real house listings — features: area, bedrooms, bathrooms, overall quality, year built, pool, garage, AC</span>
         </div>
     </div>
 </section>
 
 <section class="importance-section">
     <div class="container">
-        <h2>What Drives Lucknow Home Prices?</h2>
-        <p class="section-subtitle">SHAP analysis reveals the top price determinants</p>
+        <h2>What Drives Home Prices?</h2>
+        <p class="section-subtitle">Feature importance analysis reveals the top price determinants</p>
         <div class="importance-image-wrapper">
             <div class="importance-loading" id="importanceLoading">
                 <div class="spinner"></div>
                 <p>Loading feature importance...</p>
             </div>
             <img id="importanceImage" class="importance-image hidden"
-                 alt="SHAP Feature Importance for Lucknow House Prices"
+                 alt="Feature Importance for Smart House Prices"
                  src="">
         </div>
         <div id="importanceRanking" class="importance-ranking hidden">
@@ -191,7 +201,7 @@
 
 <footer class="footer">
     <div class="container">
-        <p class="footer-title">Lucknow House Price Predictor</p>
+        <p class="footer-title">Smart House Price Predictor</p>
         <p>Created by Abhishek Kasaudhan</p>
     </div>
 </footer>

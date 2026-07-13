@@ -14,19 +14,17 @@ CORS(app)
 # Load ML artifacts
 model = pickle.load(open("model.pkl", "rb"))
 scaler = pickle.load(open("scaler.pkl", "rb"))
-label_encoders = pickle.load(open("label_encoders.pkl", "rb"))
 feature_columns = pickle.load(open("feature_columns.pkl", "rb"))
 model_metrics = pickle.load(open("model_metrics.pkl", "rb"))
 
 CONFIDENCE_INTERVAL = 0.15  # ±15%
 
-VALID_BOOLEANS = {"yes", "no"}
 FIELD_RANGES = {
-    "area": {"type": float, "min": 100, "max": 50000, "label": "Area (sq ft)"},
-    "bedrooms": {"type": int, "min": 1, "max": 10, "label": "Bedrooms"},
-    "bathrooms": {"type": int, "min": 1, "max": 10, "label": "Bathrooms"},
-    "stories": {"type": int, "min": 1, "max": 5, "label": "Stories"},
-    "parking": {"type": int, "min": 0, "max": 10, "label": "Parking spaces"},
+    "area": {"type": float, "min": 200, "max": 30000, "label": "Living Area (sq ft)"},
+    "bedrooms": {"type": int, "min": 0, "max": 10, "label": "Bedrooms"},
+    "bathrooms": {"type": float, "min": 0, "max": 10, "label": "Bathrooms"},
+    "overall_qual": {"type": int, "min": 1, "max": 10, "label": "Overall Quality"},
+    "year_built": {"type": int, "min": 1850, "max": 2026, "label": "Year Built"},
 }
 
 BOOLEAN_FIELDS = ["has_pool", "has_garage", "has_ac"]
@@ -42,7 +40,6 @@ except Exception:
 def validate_input(data):
     """Validate all input fields and return a list of errors."""
     errors = []
-
     if not data:
         return [{"field": "body", "message": "Request body is required"}]
 
@@ -72,7 +69,7 @@ def validate_input(data):
         value = data.get(field)
         if value is None:
             errors.append({"field": field, "message": f"{field} is required (yes/no)"})
-        elif str(value).lower() not in VALID_BOOLEANS:
+        elif str(value).lower() not in {"yes", "no"}:
             errors.append({"field": field, "message": f"{field} must be 'yes' or 'no'"})
 
     return errors
@@ -82,7 +79,7 @@ def validate_input(data):
 def home():
     return jsonify(
         {
-            "status": "Lucknow House Price Predictor API running",
+            "status": "Smart House Price Predictor API running",
             "model": model_metrics["best_model"],
             "dataset_size": model_metrics["dataset_size"],
             "database": "connected" if _db_available else "unavailable",
@@ -93,7 +90,6 @@ def home():
 @app.route("/predict", methods=["POST"])
 def predict():
     data = request.json
-
     errors = validate_input(data)
     if errors:
         return jsonify({"error": "Validation failed", "details": errors}), 422
@@ -101,19 +97,14 @@ def predict():
     try:
         area = float(data["area"])
         bedrooms = int(data["bedrooms"])
-        bathrooms = int(data["bathrooms"])
-        stories = int(data["stories"])
-        parking = int(data["parking"])
+        bathrooms = float(data["bathrooms"])
+        overall_qual = int(data["overall_qual"])
+        year_built = int(data["year_built"])
+        has_pool = 1 if str(data["has_pool"]).lower() == "yes" else 0
+        has_garage = 1 if str(data["has_garage"]).lower() == "yes" else 0
+        has_ac = 1 if str(data["has_ac"]).lower() == "yes" else 0
 
-        has_pool = label_encoders["has_pool"].transform(
-            [str(data["has_pool"]).lower()]
-        )[0]
-        has_garage = label_encoders["has_garage"].transform(
-            [str(data["has_garage"]).lower()]
-        )[0]
-        has_ac = label_encoders["has_ac"].transform([str(data["has_ac"]).lower()])[0]
-
-        total_rooms = bedrooms + bathrooms
+        total_rooms = bedrooms + int(np.ceil(bathrooms))
         bath_bed_ratio = bathrooms / (bedrooms + 1)
 
         input_data = np.array(
@@ -122,8 +113,8 @@ def predict():
                     area,
                     bedrooms,
                     bathrooms,
-                    stories,
-                    parking,
+                    overall_qual,
+                    year_built,
                     has_pool,
                     has_garage,
                     has_ac,
@@ -146,8 +137,8 @@ def predict():
                     area=area,
                     bedrooms=bedrooms,
                     bathrooms=bathrooms,
-                    stories=stories,
-                    parking=parking,
+                    stories=overall_qual,
+                    parking=year_built,
                     has_pool=str(data["has_pool"]).lower(),
                     has_garage=str(data["has_garage"]).lower(),
                     has_ac=str(data["has_ac"]).lower(),
@@ -161,15 +152,16 @@ def predict():
             except Exception:
                 pass
 
-        response = {
-            "predicted_price": round(prediction, 2),
-            "confidence_interval": {"low": ci_low, "high": ci_high},
-            "confidence_band": f"±{int(CONFIDENCE_INTERVAL * 100)}%",
-            "model_used": model_metrics["best_model"],
-            "model_metrics": model_metrics["comparison"],
-        }
-
-        return jsonify(response)
+        return jsonify(
+            {
+                "predicted_price": round(prediction, 2),
+                "confidence_interval": {"low": ci_low, "high": ci_high},
+                "confidence_band": f"±{int(CONFIDENCE_INTERVAL * 100)}%",
+                "model_used": model_metrics["best_model"],
+                "model_metrics": model_metrics["comparison"],
+                "currency": "USD",
+            }
+        )
 
     except Exception as e:
         return jsonify({"error": "Prediction failed", "details": str(e)}), 500
@@ -177,16 +169,11 @@ def predict():
 
 @app.route("/history")
 def history():
-    """Return the last 20 predictions."""
     if not _db_available:
         return jsonify({"error": "Database not available"}), 503
-
     db = next(get_db())
     records = (
-        db.query(Prediction)
-        .order_by(Prediction.created_at.desc())
-        .limit(20)
-        .all()
+        db.query(Prediction).order_by(Prediction.created_at.desc()).limit(20).all()
     )
     return jsonify(
         {
@@ -200,7 +187,7 @@ def history():
                     "confidence_low": r.confidence_low,
                     "confidence_high": r.confidence_high,
                     "model_used": r.model_used,
-                    "created_at": r.created_at.isoformat() if r.created_at else None,
+                    "created_at": (r.created_at.isoformat() if r.created_at else None),
                 }
                 for r in records
             ],
@@ -211,10 +198,8 @@ def history():
 
 @app.route("/stats")
 def stats():
-    """Return aggregate statistics about all predictions."""
     if not _db_available:
         return jsonify({"error": "Database not available"}), 503
-
     db = next(get_db())
     result = db.query(
         func.count(Prediction.id).label("total"),
@@ -222,13 +207,18 @@ def stats():
         func.min(Prediction.predicted_price).label("min_price"),
         func.max(Prediction.predicted_price).label("max_price"),
     ).first()
-
     return jsonify(
         {
             "total_predictions": result.total,
-            "average_price": round(float(result.avg_price), 2) if result.avg_price else None,
-            "min_price": round(float(result.min_price), 2) if result.min_price else None,
-            "max_price": round(float(result.max_price), 2) if result.max_price else None,
+            "average_price": (
+                round(float(result.avg_price), 2) if result.avg_price else None
+            ),
+            "min_price": (
+                round(float(result.min_price), 2) if result.min_price else None
+            ),
+            "max_price": (
+                round(float(result.max_price), 2) if result.max_price else None
+            ),
         }
     )
 
@@ -241,7 +231,7 @@ def metrics():
             "feature_count": model_metrics["feature_count"],
             "best_model": model_metrics["best_model"],
             "comparison": model_metrics["comparison"],
-            "feature_importance": model_metrics["feature_importance"],
+            "feature_importance": model_metrics.get("feature_importance", []),
         }
     )
 

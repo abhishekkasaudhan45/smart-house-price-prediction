@@ -2,7 +2,7 @@
 
 ## Objective
 
-Upgrade the house price prediction project from a basic EDA + single-model Flask demo into a production-quality ML portfolio piece with real metrics, multi-model comparison, deployed frontend, and professional documentation. Reframe as a **Lucknow Housing Price Predictor** to give it a local, original-data angle.
+Upgrade the house price prediction project from a basic EDA + single-model Flask demo into a production-quality ML portfolio piece with real metrics, multi-model comparison, deployed frontend, and professional documentation. Reframe as a **Smart Housing Price Predictor** to give it a local, original-data angle.
 
 **User persona:** Recruiters / hiring managers evaluating ML portfolio projects.
 
@@ -12,7 +12,7 @@ Upgrade the house price prediction project from a basic EDA + single-model Flask
 - SHAP-based feature importance on the results page
 - Prediction shown with confidence interval (±15%)
 - Input validation and structured error handling on the API
-- README with screenshots, metrics, and run instructions (framed as Lucknow predictor)
+- README with screenshots, metrics, and run instructions (framed as Smart predictor)
 - API available and usable from the frontend
 
 ---
@@ -195,7 +195,7 @@ Replace bare try/except with structured validation:
 - Add model comparison table below the form
 - Add input validation on client side (mirrors backend)
 - CSS: loading skeleton, error states, responsive polish
-- Reframe as "Lucknow House Price Predictor" in branding text
+- Reframe as "Smart House Price Predictor" in branding text
 
 **Files:** `Fronted_UI/index.html`, `Fronted_UI/style.css`, `Fronted_UI/script.js`
 
@@ -213,8 +213,8 @@ Replace bare try/except with structured validation:
 
 ## Phase 2: Stronger Upgrade (1 week)
 
-### 2.1 Real Dataset from Lucknow/Noida
-- Scrape property listings from 99acres / Magicbricks for Lucknow and Noida
+### 2.1 Real Dataset from Smart/Noida
+- Scrape property listings from 99acres / Magicbricks for Smart and Noida
 - Clean and structure into training CSV
 - Retrain all models on real data
 - Compare performance vs synthetic data
@@ -244,5 +244,5 @@ Replace bare try/except with structured validation:
 |---|---|---|
 | Neural net library | MLPRegressor (scikit-learn) | Avoids ~500MB TensorFlow dependency; keeps deployment lightweight |
 | Frontend deployment | Vercel | Preferred platform |
-| Dataset framing | Lucknow Housing Predictor | Local angle makes it stand out as original work |
+| Dataset framing | Smart Housing Predictor | Local angle makes it stand out as original work |
 | Confidence interval | Fixed ±15% band | Simple to implement, good enough for demo purposes |

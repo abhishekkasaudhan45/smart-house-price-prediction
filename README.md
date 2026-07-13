@@ -1,4 +1,4 @@
-# Lucknow House Price Predictor
+# Smart House Price Predictor
 
 <p align="center">
   <a href="https://lucknow-house-price.vercel.app"><strong> Live Demo</strong></a> ·
@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/badge/License-MIT-yellow">
 </p>
 
-A full-stack machine learning web application that predicts house prices for the Lucknow housing market. Compares 4 ML models (Linear Regression, Random Forest, XGBoost, MLPRegressor), explains predictions with SHAP feature importance, provides ±15% confidence intervals, and stores every prediction in PostgreSQL.
+A full-stack machine learning web application that predicts house prices for the housing market. Compares 4 ML models (Linear Regression, Random Forest, XGBoost, MLPRegressor), explains predictions with SHAP feature importance, provides ±15% confidence intervals, and stores every prediction in PostgreSQL.
 
 ---
 
@@ -103,7 +103,7 @@ Flask API (Render — Docker container)
 | **Containerization** | Docker (python:3.12), docker-compose |
 | **CI/CD** | GitHub Actions, Render Deploy Hooks |
 | **Deployment** | Render (API), Vercel (Frontend) |
-| **Dataset** | 1,000 synthetic Lucknow house listings, 8 features |
+| **Dataset** | 1,000 synthetic house listings, 8 features |
 
 ---
 

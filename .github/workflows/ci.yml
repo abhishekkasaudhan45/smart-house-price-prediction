@@ -25,7 +25,7 @@ jobs:
 
       - name: Lint with flake8
         run: |
-          flake8 Backend_API/ ML_Training/ --max-line-length=88 --extend-ignore=E203,W503
+          flake8 Backend_API/ ML_Training/ --max-line-length=88 --extend-ignore=E203,W503 --exclude=alembic
 
       - name: Check formatting with black
         run: |

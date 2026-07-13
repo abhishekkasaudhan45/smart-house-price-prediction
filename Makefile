@@ -1,5 +1,5 @@
 # ============================================================
-# Lucknow House Price Predictor — Makefile
+# Smart House Price Predictor — Makefile
 # ============================================================
 # Usage:
 #   make help          → show all available commands
@@ -16,8 +16,8 @@
 # ============================================================
 
 # ── Variables ───────────────────────────────────────────────
-APP_NAME    = lucknow-house-price
-IMAGE_NAME  = lucknow-house-predictor
+APP_NAME    = house-price
+IMAGE_NAME  = house-predictor
 PORT        = 10000
 PYTHON      = python
 PIP         = pip
@@ -39,7 +39,7 @@ TEST_DIR    = tests
 help:
 	@echo ""
 	@echo "╔══════════════════════════════════════════════╗"
-	@echo "║   Lucknow House Price Predictor              ║"
+	@echo "║   Smart House Price Predictor              ║"
 	@echo "╚══════════════════════════════════════════════╝"
 	@echo ""
 	@echo "  Setup:"
@@ -87,7 +87,7 @@ test:
 .PHONY: lint
 lint:
 	@echo "🔍 Checking code style..."
-	$(FLAKE8) $(SRC_DIRS) --max-line-length=88 --exclude=__pycache__,venv,.git
+	$(FLAKE8) $(SRC_DIRS) --max-line-length=88 --exclude=__pycache__,venv,.git,alembic
 	@echo "✅ No style issues found!"
 
 .PHONY: format

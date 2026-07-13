@@ -6,7 +6,10 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql://house_user:sqe0NJk4HdbAueLBnjbqiAbv1MxlW7pB@dpg-d9a9lf7aqgkc739af87g-a/house_prices_0qgv"
+    (  # Render PostgreSQL URL
+        "postgresql://house_user:sqe0NJk4HdbAueLBnjbqiAbv1MxlW7pB"
+        "@dpg-d9a9lf7aqgkc739af87g-a/house_prices_0qgv"
+    ),
 )
 
 # Render provides postgres:// but SQLAlchemy needs postgresql://

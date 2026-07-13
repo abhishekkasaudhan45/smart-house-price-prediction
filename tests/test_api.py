@@ -1,11 +1,9 @@
 """Tests for the House Price Predictor API."""
 
-import json
 import pytest
 import sys
 import os
 
-# Change to Backend_API directory so pickle files load correctly
 _BACKEND_DIR = os.path.join(os.path.dirname(__file__), "..", "Backend_API")
 sys.path.insert(0, _BACKEND_DIR)
 os.chdir(_BACKEND_DIR)
@@ -22,11 +20,11 @@ def client():
 
 
 VALID_INPUT = {
-    "area": 2500,
+    "area": 2000,
     "bedrooms": 3,
     "bathrooms": 2,
-    "stories": 2,
-    "parking": 2,
+    "overall_qual": 7,
+    "year_built": 2005,
     "has_pool": "no",
     "has_garage": "yes",
     "has_ac": "yes",
@@ -41,7 +39,7 @@ class TestHealth:
         data = resp.get_json()
         assert resp.status_code == 200
         assert "status" in data
-        assert "Lucknow" in data["status"]
+        assert "Smart" in data["status"]
         assert "database" in data
 
 
@@ -55,6 +53,7 @@ class TestPredictValidation:
         assert "predicted_price" in data
         assert isinstance(data["predicted_price"], float)
         assert data["predicted_price"] > 0
+        assert data["currency"] == "USD"
 
     def test_valid_input_has_confidence_interval(self, client):
         resp = client.post("/predict", json=VALID_INPUT)
@@ -95,7 +94,8 @@ class TestMetrics:
         assert "comparison" in data
         assert "best_model" in data
         assert "dataset_size" in data
-        assert data["dataset_size"] == 1000
+        assert data["dataset_size"] == 1460
+        assert "feature_importance" in data
 
 
 class TestDatabaseEndpoints:

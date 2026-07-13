@@ -1,4 +1,4 @@
-# Resume-Ready Upgrades — Lucknow House Price Predictor
+# Resume-Ready Upgrades — Smart House Price Predictor
 
 ## Problem Statement
 

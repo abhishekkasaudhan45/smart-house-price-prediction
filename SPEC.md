@@ -2,7 +2,7 @@
 
 ## Objective
 
-Containerize the Lucknow House Price Predictor Flask API with Docker, and set up a GitHub Actions CI/CD pipeline that runs tests, builds the image, and auto-deploys to Render. This proves production engineering skills: containerization, CI/CD, and infrastructure-as-code.
+Containerize the Smart House Price Predictor Flask API with Docker, and set up a GitHub Actions CI/CD pipeline that runs tests, builds the image, and auto-deploys to Render. This proves production engineering skills: containerization, CI/CD, and infrastructure-as-code.
 
 **Success criteria:**
 - `docker build` produces a working image serving the API on port 10000
@@ -34,7 +34,7 @@ cd Backend_API && docker build -t house-predictor .
 make docker-build
 
 # Run container locally
-docker run -d --name lucknow-house-price -p 10000:10000 house-predictor
+docker run -d --name house-price -p 10000:10000 house-predictor
 # or
 make docker-run
 
