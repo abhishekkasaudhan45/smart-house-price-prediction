@@ -1,51 +1,94 @@
 # Lucknow House Price Predictor
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://python.org)
-[![Flask](https://img.shields.io/badge/Flask-2.0%2B-black?logo=flask)](https://flask.palletsprojects.com)
-[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.3%2B-orange?logo=scikit-learn)](https://scikit-learn.org)
-[![XGBoost](https://img.shields.io/badge/XGBoost-2.0%2B-green)](https://xgboost.readthedocs.io)
-[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+<p align="center">
+  <a href="https://lucknow-house-price.vercel.app"><strong> Live Demo</strong></a> ·
+  <a href="https://lucknow-house-price-api.onrender.com"><strong> API Health</strong></a> ·
+  <a href="https://github.com/abhishekkasaudhan45/smart-house-price-prediction"><strong> GitHub</strong></a>
+</p>
 
-A full-stack machine learning web application that predicts house prices for the Lucknow housing market. Compares 4 ML models, shows SHAP feature importance, and provides predictions with confidence intervals.
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.12-blue?logo=python">
+  <img src="https://img.shields.io/badge/Flask-3.0-black?logo=flask">
+  <img src="https://img.shields.io/badge/scikit--learn-1.9-orange?logo=scikit-learn">
+  <img src="https://img.shields.io/badge/PostgreSQL-16-blue?logo=postgresql">
+  <img src="https://img.shields.io/badge/Docker-24-blue?logo=docker">
+  <img src="https://img.shields.io/badge/CI-GitHub_Actions-green?logo=githubactions">
+  <img src="https://img.shields.io/badge/License-MIT-yellow">
+</p>
 
-**Live Demo:** [lucknow-house-price.vercel.app](https://lucknow-house-price.vercel.app)
-**API:** `https://lucknow-house-price-api.onrender.com/`
+A full-stack machine learning web application that predicts house prices for the Lucknow housing market. Compares 4 ML models (Linear Regression, Random Forest, XGBoost, MLPRegressor), explains predictions with SHAP feature importance, provides ±15% confidence intervals, and stores every prediction in PostgreSQL.
 
 ---
 
-## Performance Summary
+## Architecture
+
+```
+User Browser (Vercel)
+     │
+     ▼
+Flask API (Render — Docker container)
+     │
+     ├── ML Engine (scikit-learn, 4 models)
+     ├── Input Validation
+     ├── SHAP Feature Importance
+     └── PostgreSQL Database (Render)
+           └── Prediction history + stats
+```
+
+---
+
+## Model Performance
 
 | Model | R² Score | RMSE (₹) | MAE (₹) | Rank |
 |---|---|---|---|---|
 | **Linear Regression** | **0.9733** | **₹26,739** | **₹21,019** | 🏆 **1** |
 | XGBoost | 0.9387 | ₹40,489 | ₹32,748 | 2 |
-| Random Forest | 0.8971 | ₹52,448 | ₹41,756 | 3 |
+| Random Forest | 0.8962 | ₹52,678 | ₹41,974 | 3 |
 | MLPRegressor (Neural Net) | -25.30 | ₹8,38,508 | ₹8,22,413 | 4 |
 
-> **Winner:** Linear Regression selected by lowest RMSE on the test set (20% holdout).
+> **Winner:** Linear Regression selected by lowest RMSE on test holdout (20%).
 
----
+### Model Comparison Chart
 
-## Top Price Drivers
+![Model Comparison](Backend_API/model_comparison.png)
 
-SHAP analysis identifies the most influential features in Lucknow housing prices:
+### SHAP Feature Importance
 
-1. **Area (sq ft)** — strongest price determinant
-2. **Swimming Pool** — premium feature
-3. **Bedrooms** — more rooms = higher price
-4. **Garage** — adds significant value
-5. **Total Rooms** — overall size signal
+![SHAP Feature Importance](Backend_API/feature_importance.png)
+
+**Top price drivers identified:**
+1. **Area (sq ft)** — strongest determinant of home price
+2. **Swimming Pool** — premium feature adding significant value
+3. **Bedrooms** — more rooms command higher prices
+4. **Garage** — adds substantial property value
+5. **Total Rooms** — overall property size signal
 
 ---
 
 ## Features
 
-- **4 Model Comparison** — Linear Regression, Random Forest, XGBoost, MLPRegressor
-- **SHAP Feature Importance** — interactive visualization of price drivers
-- **Confidence Interval** — ±15% band on every prediction
-- **Input Validation** — client + server side validation
-- **Clean UI** — responsive, mobile-friendly design
-- **REST API** — JSON endpoints for easy integration
+### ML Pipeline
+- 4-model comparison with automated best-model selection (lowest RMSE)
+- SHAP-based model interpretability
+- Feature engineering (total rooms, bath/bed ratio)
+- ±15% confidence intervals on every prediction
+
+### Engineering
+- **PostgreSQL** persistence — every prediction saved with full input/output
+- **Docker** containerization — single-command deploy
+- **CI/CD** — automated testing + deploy via GitHub Actions
+- **Input validation** — client-side + server-side (dual layer)
+- **9 pytest tests** — health, prediction, validation, history, stats
+
+### API
+| Endpoint | Method | Description |
+|---|---|---|
+| `/` | GET | Health check + DB status |
+| `/predict` | POST | Predict house price |
+| `/history` | GET | Last 20 predictions |
+| `/stats` | GET | Aggregate stats (total, avg, min, max) |
+| `/metrics` | GET | Model comparison data |
+| `/feature-importance` | GET | SHAP summary plot PNG |
 
 ---
 
@@ -55,7 +98,10 @@ SHAP analysis identifies the most influential features in Lucknow housing prices
 |---|---|
 | **ML Training** | Pandas, NumPy, scikit-learn, XGBoost, SHAP |
 | **Backend** | Flask, Flask-CORS, gunicorn |
-| **Frontend** | HTML, CSS (Inter font, CSS Grid/Flexbox), Vanilla JS |
+| **Database** | PostgreSQL 16, SQLAlchemy ORM, Alembic |
+| **Frontend** | HTML5, CSS3 (Inter font, Grid/Flexbox), Vanilla JS |
+| **Containerization** | Docker (python:3.12), docker-compose |
+| **CI/CD** | GitHub Actions, Render Deploy Hooks |
 | **Deployment** | Render (API), Vercel (Frontend) |
 | **Dataset** | 1,000 synthetic Lucknow house listings, 8 features |
 
@@ -64,125 +110,105 @@ SHAP analysis identifies the most influential features in Lucknow housing prices
 ## Project Structure
 
 ```
-Backend_API/       # Flask REST API & trained models
-  app.py            — main Flask application
-  model.pkl         — best trained model
-  model_metrics.pkl — comparison data for frontend
-  feature_importance.png — SHAP summary plot
-  requirements.txt
+Backend_API/           # Flask REST API
+├── app.py             — Application + 6 endpoints
+├── database.py        — SQLAlchemy engine + session
+├── models.py          — Prediction ORM model
+├── Dockerfile         — Container image (python:3.12)
+├── requirements.txt
+├── alembic/           — Schema migrations
+└── *.pkl / *.png      — ML artifacts
 
-Fronted_UI/        # Static frontend
-  index.html
-  style.css
-  Script.js
+Fronted_UI/            # Static frontend (Vercel)
+├── index.html
+├── style.css
+└── Script.js
 
-ML_Training/       # Data generation & model training
-  data.py           — synthetic dataset generator
-  house_data.csv    — 1,000 house listings
-  eda.ipynb         — exploratory data analysis
-  training.ipynb    — original (2 models)
-  advanced_training.ipynb — 4-model comparison + SHAP
+ML_Training/           # Data generation & model training
+├── house_data.csv     — 1,000 listings
+├── advanced_training.ipynb — 4-model comparison + SHAP
+├── training.ipynb     — Original (2 models)
+├── eda.ipynb          — Exploratory analysis
+└── data.py            — Synthetic data generator
+
+tests/                 # pytest test suite (9 tests)
+└── test_api.py
+
+.github/workflows/
+└── ci.yml             — GitHub Actions pipeline
 ```
 
 ---
 
-## How to Run Locally
+## Quick Start
 
-### Backend
+### Prerequisites
+- Python 3.12+
+- Docker (optional — for containerized run)
+
+### Backend (local)
 
 ```bash
 cd Backend_API
 pip install -r requirements.txt
 python app.py
+# → http://localhost:10000
 ```
 
-The API starts on `http://localhost:10000`.
-
-### Frontend
+### Frontend (local)
 
 ```bash
 cd Fronted_UI
 python -m http.server 8080
-# or: npx serve .
+# → http://localhost:8080
 ```
 
-Open `http://localhost:8080` in your browser. The frontend connects to `https://lucknow-house-price-api.onrender.com`.
-
-### Training
+### With Docker
 
 ```bash
-cd ML_Training
-jupyter notebook advanced_training.ipynb
+make docker-build
+make docker-run
+# → http://localhost:10000
 ```
 
----
-
-## API Endpoints
-
-| Endpoint | Method | Description |
-|---|---|---|
-| `/` | GET | Health check & model info |
-| `/predict` | POST | Predict house price (JSON body) |
-| `/metrics` | GET | Model comparison data |
-| `/feature-importance` | GET | SHAP feature importance image |
-
-### Example Prediction Request
+### Tests
 
 ```bash
-curl -X POST http://localhost:10000/predict \
-  -H "Content-Type: application/json" \
-  -d '{
-    "area": 2500,
-    "bedrooms": 3,
-    "bathrooms": 2,
-    "stories": 2,
-    "parking": 2,
-    "has_pool": "no",
-    "has_garage": "yes",
-    "has_ac": "yes"
-  }'
-```
-
-### Response
-
-```json
-{
-  "predicted_price": 790439.95,
-  "confidence_interval": { "low": 671873.96, "high": 909005.94 },
-  "confidence_band": "±15%",
-  "model_used": "Linear Regression",
-  "model_metrics": { ... }
-}
+make test
+# or
+python -m pytest tests/ -v
 ```
 
 ---
 
 ## Deployment
 
-### API (Render)
-1. Push the `Backend_API/` directory to a new GitHub repo
-2. Create a **Web Service** on Render
-3. Set **Build Command:** `pip install -r requirements.txt`
-4. Set **Start Command:** `gunicorn app:app`
+### Render (API)
+1. Push repo to GitHub
+2. Render → New Web Service → connect repo
+3. Settings:
+   - **Dockerfile Path:** `./Backend_API/Dockerfile`
+   - **Build Command:** *(empty)*
+   - **Start Command:** *(empty)*
+4. Add env var `DATABASE_URL` (Render PostgreSQL internal URL)
 5. Deploy
 
-### Frontend (Vercel)
-1. Push the `Fronted_UI/` directory to a GitHub repo
-2. Import project on Vercel
-3. Set **Output Directory:** `.` (root)
-4. Add `vercel.json` with a rewrite rule pointing `/api/*` to your Render URL
-5. Deploy
+### Vercel (Frontend)
+1. Push `Fronted_UI/` to GitHub
+2. Vercel → Import Project → connect repo
+3. It auto-deploys. The JS connects to `https://lucknow-house-price-api.onrender.com`
 
 ---
 
-## What I Learned
+## What I Built
 
-- Building a full ML pipeline from synthetic data generation through deployment
-- Comparing multiple models systematically with proper holdout evaluation
-- Using SHAP for model interpretability beyond simple feature importance
-- Deploying a Flask API with fallbacks for cold-start scenarios
-- Cleaning validation as a two-layer strategy (client-side UX + server-side security)
+- An end-to-end ML system from synthetic data generation through production deployment
+- Systematic model evaluation with SHAP interpretability
+- A production-grade Flask API with PostgreSQL, Docker, and CI/CD
+- Professional engineering practices: testing, linting, pre-commit, containerization
 
 ---
 
-Created by **Abhishek Kasaudhan**
+<p align="center">
+  Created by <strong>Abhishek Kasaudhan</strong>
+</p>
