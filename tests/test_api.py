@@ -42,6 +42,7 @@ class TestHealth:
         assert resp.status_code == 200
         assert "status" in data
         assert "Lucknow" in data["status"]
+        assert "database" in data
 
 
 class TestPredictValidation:
@@ -95,3 +96,21 @@ class TestMetrics:
         assert "best_model" in data
         assert "dataset_size" in data
         assert data["dataset_size"] == 1000
+
+
+class TestDatabaseEndpoints:
+    """GET /history and /stats — work offline."""
+
+    def test_history_returns_predictions_or_error(self, client):
+        resp = client.get("/history")
+        data = resp.get_json()
+        assert resp.status_code in (200, 503)
+        if resp.status_code == 503:
+            assert "Database not available" in data["error"]
+
+    def test_stats_returns_aggregates_or_error(self, client):
+        resp = client.get("/stats")
+        data = resp.get_json()
+        assert resp.status_code in (200, 503)
+        if resp.status_code == 503:
+            assert "Database not available" in data["error"]

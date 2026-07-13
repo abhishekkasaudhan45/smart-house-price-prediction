@@ -4,6 +4,10 @@ import pickle
 import numpy as np
 import os
 
+from database import get_db, init_db
+from models import Prediction
+from sqlalchemy import func
+
 app = Flask(__name__)
 CORS(app)
 
@@ -27,6 +31,13 @@ FIELD_RANGES = {
 
 BOOLEAN_FIELDS = ["has_pool", "has_garage", "has_ac"]
 
+# Initialize database tables on startup
+_db_available = True
+try:
+    init_db()
+except Exception:
+    _db_available = False
+
 
 def validate_input(data):
     """Validate all input fields and return a list of errors."""
@@ -35,7 +46,6 @@ def validate_input(data):
     if not data:
         return [{"field": "body", "message": "Request body is required"}]
 
-    # Validate numeric fields
     for field, spec in FIELD_RANGES.items():
         value = data.get(field)
         if value is None:
@@ -58,7 +68,6 @@ def validate_input(data):
                 {"field": field, "message": f"{spec['label']} must be a valid number"}
             )
 
-    # Validate boolean fields
     for field in BOOLEAN_FIELDS:
         value = data.get(field)
         if value is None:
@@ -76,6 +85,7 @@ def home():
             "status": "Lucknow House Price Predictor API running",
             "model": model_metrics["best_model"],
             "dataset_size": model_metrics["dataset_size"],
+            "database": "connected" if _db_available else "unavailable",
         }
     )
 
@@ -126,9 +136,30 @@ def predict():
         input_scaled = scaler.transform(input_data)
         prediction = float(model.predict(input_scaled)[0])
 
-        # Confidence interval
         ci_low = round(prediction * (1 - CONFIDENCE_INTERVAL), 2)
         ci_high = round(prediction * (1 + CONFIDENCE_INTERVAL), 2)
+
+        if _db_available:
+            try:
+                db = next(get_db())
+                record = Prediction(
+                    area=area,
+                    bedrooms=bedrooms,
+                    bathrooms=bathrooms,
+                    stories=stories,
+                    parking=parking,
+                    has_pool=str(data["has_pool"]).lower(),
+                    has_garage=str(data["has_garage"]).lower(),
+                    has_ac=str(data["has_ac"]).lower(),
+                    predicted_price=round(prediction, 2),
+                    confidence_low=ci_low,
+                    confidence_high=ci_high,
+                    model_used=model_metrics["best_model"],
+                )
+                db.add(record)
+                db.commit()
+            except Exception:
+                pass
 
         response = {
             "predicted_price": round(prediction, 2),
@@ -142,6 +173,64 @@ def predict():
 
     except Exception as e:
         return jsonify({"error": "Prediction failed", "details": str(e)}), 500
+
+
+@app.route("/history")
+def history():
+    """Return the last 20 predictions."""
+    if not _db_available:
+        return jsonify({"error": "Database not available"}), 503
+
+    db = next(get_db())
+    records = (
+        db.query(Prediction)
+        .order_by(Prediction.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    return jsonify(
+        {
+            "predictions": [
+                {
+                    "id": r.id,
+                    "area": r.area,
+                    "bedrooms": r.bedrooms,
+                    "bathrooms": r.bathrooms,
+                    "predicted_price": r.predicted_price,
+                    "confidence_low": r.confidence_low,
+                    "confidence_high": r.confidence_high,
+                    "model_used": r.model_used,
+                    "created_at": r.created_at.isoformat() if r.created_at else None,
+                }
+                for r in records
+            ],
+            "count": len(records),
+        }
+    )
+
+
+@app.route("/stats")
+def stats():
+    """Return aggregate statistics about all predictions."""
+    if not _db_available:
+        return jsonify({"error": "Database not available"}), 503
+
+    db = next(get_db())
+    result = db.query(
+        func.count(Prediction.id).label("total"),
+        func.avg(Prediction.predicted_price).label("avg_price"),
+        func.min(Prediction.predicted_price).label("min_price"),
+        func.max(Prediction.predicted_price).label("max_price"),
+    ).first()
+
+    return jsonify(
+        {
+            "total_predictions": result.total,
+            "average_price": round(float(result.avg_price), 2) if result.avg_price else None,
+            "min_price": round(float(result.min_price), 2) if result.min_price else None,
+            "max_price": round(float(result.max_price), 2) if result.max_price else None,
+        }
+    )
 
 
 @app.route("/metrics")
