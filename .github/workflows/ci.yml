@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r Backend_API/requirements.txt
+          pip install pytest flake8 black
+
+      - name: Lint with flake8
+        run: |
+          flake8 Backend_API/ ML_Training/ --max-line-length=88 --extend-ignore=E203,W503
+
+      - name: Check formatting with black
+        run: |
+          black --check --line-length=88 Backend_API/ ML_Training/
+
+      - name: Test with pytest
+        run: |
+          pytest tests/ -v --tb=short

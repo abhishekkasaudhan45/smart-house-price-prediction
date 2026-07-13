@@ -44,15 +44,19 @@ def validate_input(data):
         try:
             parsed = spec["type"](value)
             if parsed < spec["min"] or parsed > spec["max"]:
-                errors.append({
-                    "field": field,
-                    "message": f"{spec['label']} must be between {spec['min']} and {spec['max']}"
-                })
+                errors.append(
+                    {
+                        "field": field,
+                        "message": (
+                            f"{spec['label']} must be between "
+                            f"{spec['min']} and {spec['max']}"
+                        ),
+                    }
+                )
         except (ValueError, TypeError):
-            errors.append({
-                "field": field,
-                "message": f"{spec['label']} must be a valid number"
-            })
+            errors.append(
+                {"field": field, "message": f"{spec['label']} must be a valid number"}
+            )
 
     # Validate boolean fields
     for field in BOOLEAN_FIELDS:
@@ -67,11 +71,13 @@ def validate_input(data):
 
 @app.route("/")
 def home():
-    return jsonify({
-        "status": "Lucknow House Price Predictor API running",
-        "model": model_metrics["best_model"],
-        "dataset_size": model_metrics["dataset_size"]
-    })
+    return jsonify(
+        {
+            "status": "Lucknow House Price Predictor API running",
+            "model": model_metrics["best_model"],
+            "dataset_size": model_metrics["dataset_size"],
+        }
+    )
 
 
 @app.route("/predict", methods=["POST"])
@@ -89,18 +95,33 @@ def predict():
         stories = int(data["stories"])
         parking = int(data["parking"])
 
-        has_pool = label_encoders["has_pool"].transform([str(data["has_pool"]).lower()])[0]
-        has_garage = label_encoders["has_garage"].transform([str(data["has_garage"]).lower()])[0]
+        has_pool = label_encoders["has_pool"].transform(
+            [str(data["has_pool"]).lower()]
+        )[0]
+        has_garage = label_encoders["has_garage"].transform(
+            [str(data["has_garage"]).lower()]
+        )[0]
         has_ac = label_encoders["has_ac"].transform([str(data["has_ac"]).lower()])[0]
 
         total_rooms = bedrooms + bathrooms
         bath_bed_ratio = bathrooms / (bedrooms + 1)
 
-        input_data = np.array([[
-            area, bedrooms, bathrooms, stories, parking,
-            has_pool, has_garage, has_ac,
-            total_rooms, bath_bed_ratio
-        ]])
+        input_data = np.array(
+            [
+                [
+                    area,
+                    bedrooms,
+                    bathrooms,
+                    stories,
+                    parking,
+                    has_pool,
+                    has_garage,
+                    has_ac,
+                    total_rooms,
+                    bath_bed_ratio,
+                ]
+            ]
+        )
 
         input_scaled = scaler.transform(input_data)
         prediction = float(model.predict(input_scaled)[0])
@@ -114,7 +135,7 @@ def predict():
             "confidence_interval": {"low": ci_low, "high": ci_high},
             "confidence_band": f"±{int(CONFIDENCE_INTERVAL * 100)}%",
             "model_used": model_metrics["best_model"],
-            "model_metrics": model_metrics["comparison"]
+            "model_metrics": model_metrics["comparison"],
         }
 
         return jsonify(response)
@@ -125,13 +146,15 @@ def predict():
 
 @app.route("/metrics")
 def metrics():
-    return jsonify({
-        "dataset_size": model_metrics["dataset_size"],
-        "feature_count": model_metrics["feature_count"],
-        "best_model": model_metrics["best_model"],
-        "comparison": model_metrics["comparison"],
-        "feature_importance": model_metrics["feature_importance"]
-    })
+    return jsonify(
+        {
+            "dataset_size": model_metrics["dataset_size"],
+            "feature_count": model_metrics["feature_count"],
+            "best_model": model_metrics["best_model"],
+            "comparison": model_metrics["comparison"],
+            "feature_importance": model_metrics["feature_importance"],
+        }
+    )
 
 
 @app.route("/feature-importance")

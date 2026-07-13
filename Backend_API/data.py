@@ -13,9 +13,11 @@ scaler = pickle.load(open("scaler.pkl", "rb"))
 label_encoders = pickle.load(open("label_encoders.pkl", "rb"))
 feature_columns = pickle.load(open("feature_columns.pkl", "rb"))
 
+
 @app.route("/")
 def home():
     return jsonify({"status": "Smart House Price Prediction API running"})
+
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -35,21 +37,31 @@ def predict():
         total_rooms = bedrooms + bathrooms
         bath_bed_ratio = bathrooms / (bedrooms + 1)
 
-        input_data = np.array([[ 
-            area, bedrooms, bathrooms, stories, parking,
-            has_pool, has_garage, has_ac,
-            total_rooms, bath_bed_ratio
-        ]])
+        input_data = np.array(
+            [
+                [
+                    area,
+                    bedrooms,
+                    bathrooms,
+                    stories,
+                    parking,
+                    has_pool,
+                    has_garage,
+                    has_ac,
+                    total_rooms,
+                    bath_bed_ratio,
+                ]
+            ]
+        )
 
         input_scaled = scaler.transform(input_data)
         prediction = model.predict(input_scaled)[0]
 
-        return jsonify({
-            "predicted_price": round(float(prediction), 2)
-        })
+        return jsonify({"predicted_price": round(float(prediction), 2)})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
 
 # ✅ RENDER-SAFE FLASK START
 if __name__ == "__main__":
