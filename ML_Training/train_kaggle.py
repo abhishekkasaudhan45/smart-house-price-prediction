@@ -5,6 +5,7 @@ import warnings
 import numpy as np
 import pandas as pd
 import pickle
+import joblib
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
@@ -126,14 +127,12 @@ best_name = comparison_df.index[0]
 best_model = trained_models[best_name]
 print(f"\nBest model: {best_name} (lowest RMSE)")
 
-# === Save Artifacts ===
-with open("../Backend_API/model.pkl", "wb") as f:
-    pickle.dump(best_model, f)
-print(">> Saved model.pkl")
+# === Save Artifacts (joblib compress=3 for smaller files) ===
+joblib.dump(best_model, "../Backend_API/model.pkl", compress=3)
+print(">> Saved model.pkl (compressed)")
 
-with open("../Backend_API/scaler.pkl", "wb") as f:
-    pickle.dump(scaler, f)
-print(">> Saved scaler.pkl")
+joblib.dump(scaler, "../Backend_API/scaler.pkl", compress=3)
+print(">> Saved scaler.pkl (compressed)")
 
 # Feature columns for API
 with open("../Backend_API/feature_columns.pkl", "wb") as f:
@@ -141,11 +140,25 @@ with open("../Backend_API/feature_columns.pkl", "wb") as f:
 print(">> Saved feature_columns.pkl")
 
 # Model metrics
+fi_list = []
+if hasattr(best_model, "coef_"):
+    importances = np.abs(best_model.coef_)
+else:
+    importances = np.abs(best_model.feature_importances_)
+
+fi_df = pd.DataFrame({"Feature": feature_cols, "Importance": importances})
+fi_df = fi_df.sort_values("Importance", ascending=False)
+fi_list = [
+    {"Feature": row["Feature"], "Importance": round(row["Importance"], 4)}
+    for _, row in fi_df.iterrows()
+]
+
 model_metrics = {
     "dataset_size": len(df),
     "feature_count": len(feature_cols),
     "best_model": best_name,
     "comparison": results,
+    "feature_importance": fi_list,
 }
 with open("../Backend_API/model_metrics.pkl", "wb") as f:
     pickle.dump(model_metrics, f)
@@ -157,16 +170,8 @@ with open("../Backend_API/label_encoders.pkl", "wb") as f:
     pickle.dump(label_encoders, f)
 print(">> Saved label_encoders.pkl")
 
-# === Feature Importance / Coeffs ===
-if hasattr(best_model, "coef_"):
-    importances = np.abs(best_model.coef_)
-else:
-    importances = np.abs(best_model.feature_importances_)
-
-fi_df = pd.DataFrame({"Feature": feature_cols, "Importance": importances})
-fi_df = fi_df.sort_values("Importance", ascending=False)
 print("\nTop Price Drivers:")
-for i, row in fi_df.iterrows():
+for _, row in fi_df.iterrows():
     print(f"  {row['Feature']}: {row['Importance']:.2f}")
 
-print("\n✅ Training complete!")
+print("\n>> Training complete!")

@@ -1,4 +1,4 @@
-const API_URL = "https://smart-house-price-api.onrender.com";
+const API_URL = "https://lucknow-house-price-api.onrender.com";
 
 const form = document.getElementById("predictionForm");
 const resultSection = document.getElementById("resultSection");
@@ -17,6 +17,32 @@ const FIELD_RULES = {
     bathrooms: { min: 0, max: 10, label: "Bathrooms" },
     year_built: { min: 1850, max: 2026, label: "Year Built" },
 };
+
+const CACHE_KEY = "shpp_metrics_cache";
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+function getCachedMetrics() {
+    try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        const cached = JSON.parse(raw);
+        if (Date.now() - cached.timestamp > CACHE_TTL) return null;
+        return cached.data;
+    } catch {
+        return null;
+    }
+}
+
+function setCachedMetrics(data) {
+    try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+            timestamp: Date.now(),
+            data: data,
+        }));
+    } catch {
+        // localStorage full or unavailable
+    }
+}
 
 function validateField(id) {
     const el = document.getElementById(id);
@@ -121,83 +147,116 @@ function resetForm() {
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-async function loadModelComparison() {
+function renderComparisonTable(data) {
     const tableWrapper = document.getElementById("tableWrapper");
     const tableLoading = document.getElementById("tableLoading");
     const tbody = document.getElementById("comparisonBody");
+    const sorted = Object.entries(data.comparison).sort((a, b) => a[1].RMSE - b[1].RMSE);
+    tbody.innerHTML = "";
+    sorted.forEach(([name, metrics], index) => {
+        const row = document.createElement("tr");
+        if (index === 0) row.className = "best-row";
+        const rankClass = "rank-" + (index + 1);
+        row.innerHTML = `
+            <td>${name} ${index === 0 ? '\u{1F3C6}' : ''}</td>
+            <td>${metrics.R2}</td>
+            <td>$${Number(metrics.RMSE).toLocaleString("en-US")}</td>
+            <td>$${Number(metrics.MAE).toLocaleString("en-US")}</td>
+            <td class="rank-col"><span class="rank-badge ${rankClass}">${index + 1}</span></td>
+        `;
+        tbody.appendChild(row);
+    });
+    tableLoading.classList.add("hidden");
+    tableWrapper.classList.remove("hidden");
+}
+
+function renderFeatureImportance(data) {
+    const rankingDiv = document.getElementById("importanceRanking");
+    const list = document.getElementById("importanceList");
+    if (data.feature_importance && data.feature_importance.length) {
+        list.innerHTML = "";
+        data.feature_importance.forEach((item) => {
+            const li = document.createElement("li");
+            li.textContent = item.Feature;
+            list.appendChild(li);
+        });
+        rankingDiv.classList.remove("hidden");
+    }
+}
+
+async function loadModelComparison() {
+    const cached = getCachedMetrics();
+    if (cached && cached.comparison) {
+        renderComparisonTable(cached);
+    }
     try {
         const response = await fetch(API_URL + "/metrics");
         const data = await response.json();
         if (!response.ok) throw new Error("Failed to load metrics");
-        const sorted = Object.entries(data.comparison).sort((a, b) => a[1].RMSE - b[1].RMSE);
-        tbody.innerHTML = "";
-        sorted.forEach(([name, metrics], index) => {
-            const row = document.createElement("tr");
-            if (index === 0) row.className = "best-row";
-            const rankClass = "rank-" + (index + 1);
-            row.innerHTML = `
-                <td>${name} ${index === 0 ? '🏆' : ''}</td>
-                <td>${metrics.R2}</td>
-                <td>$${Number(metrics.RMSE).toLocaleString("en-US")}</td>
-                <td>$${Number(metrics.MAE).toLocaleString("en-US")}</td>
-                <td class="rank-col"><span class="rank-badge ${rankClass}">${index + 1}</span></td>
-            `;
-            tbody.appendChild(row);
-        });
-        tableLoading.classList.add("hidden");
-        tableWrapper.classList.remove("hidden");
+        setCachedMetrics(data);
+        renderComparisonTable(data);
     } catch (error) {
-        tableLoading.innerHTML = `<p style="color: var(--accent-red);">
-            <i class="fas fa-exclamation-circle"></i> Could not load model comparison</p>`;
+        if (!cached) {
+            document.getElementById("tableLoading").innerHTML =
+                '<p style="color: var(--accent-red);"><i class="fas fa-exclamation-circle"></i> Could not load model comparison</p>';
+        }
     }
 }
 
 async function loadFeatureImportance() {
     const img = document.getElementById("importanceImage");
     const loading = document.getElementById("importanceLoading");
-    const rankingDiv = document.getElementById("importanceRanking");
-    const list = document.getElementById("importanceList");
     img.src = API_URL + "/feature-importance";
     img.onload = () => {
         loading.classList.add("hidden");
         img.classList.remove("hidden");
     };
     img.onerror = () => {
-        loading.innerHTML = `<p style="color: var(--accent-red);">
-            <i class="fas fa-exclamation-circle"></i> Could not load feature importance chart</p>`;
+        loading.innerHTML = '<p style="color: var(--accent-red);"><i class="fas fa-exclamation-circle"></i> Could not load feature importance chart</p>';
     };
+
+    const cached = getCachedMetrics();
+    if (cached) {
+        renderFeatureImportance(cached);
+    }
     try {
         const response = await fetch(API_URL + "/metrics");
         const data = await response.json();
-        if (data.feature_importance && data.feature_importance.length) {
-            list.innerHTML = "";
-            data.feature_importance.forEach((item) => {
-                const li = document.createElement("li");
-                li.textContent = item.Feature;
-                list.appendChild(li);
-            });
-            rankingDiv.classList.remove("hidden");
-        }
-    } catch (error) {
-        // silent
+        renderFeatureImportance(data);
+    } catch {
+        // silent - cached data already shown if available
     }
 }
 
 async function wakeUpServer() {
-    const loadingMessage = document.querySelector("#loadingSpinner p");
-    loadingMessage.textContent = "Waking up the server...";
-    try {
-        const res = await fetch(API_URL + "/", { signal: AbortSignal.timeout(8000) });
-        if (res.ok) loadingMessage.textContent = "Server ready! Predicting...";
-    } catch {
-        loadingMessage.textContent = "Server might still be waking up...";
+    const statusEl = document.getElementById("serverStatus");
+    if (statusEl) {
+        statusEl.textContent = "Connecting to server...";
+        statusEl.className = "server-status waking";
     }
+    try {
+        const res = await fetch(API_URL + "/", { signal: AbortSignal.timeout(60000) });
+        if (res.ok) {
+            if (statusEl) {
+                statusEl.textContent = "Server ready";
+                statusEl.className = "server-status ready";
+                setTimeout(() => statusEl.classList.add("fade-out"), 3000);
+            }
+            return true;
+        }
+    } catch {
+        if (statusEl) {
+            statusEl.textContent = "Server waking up... (free tier, ~30s)";
+            statusEl.className = "server-status waking";
+        }
+    }
+    return false;
 }
 
-async function fetchWithRetry(url, options, retries = 1, delayMs = 4000) {
+async function fetchWithRetry(url, options, retries = 2, delayMs = 3000) {
     for (let attempt = 0; attempt <= retries; attempt++) {
         if (attempt > 0) {
-            document.querySelector("#loadingSpinner p").textContent = "Retrying after wake-up...";
+            document.querySelector("#loadingSpinner p").textContent = "Retrying...";
             await new Promise(r => setTimeout(r, delayMs));
         }
         try {
@@ -209,6 +268,17 @@ async function fetchWithRetry(url, options, retries = 1, delayMs = 4000) {
     }
 }
 
-wakeUpServer();
-loadModelComparison();
-loadFeatureImportance();
+async function init() {
+    const cached = getCachedMetrics();
+    if (cached) {
+        renderComparisonTable(cached);
+        renderFeatureImportance(cached);
+    }
+
+    const serverReady = await wakeUpServer();
+
+    loadModelComparison();
+    loadFeatureImportance();
+}
+
+init();

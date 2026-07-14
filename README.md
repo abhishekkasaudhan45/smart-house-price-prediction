@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://smart-house-price.vercel.app"><strong> Live Demo</strong></a> ·
-  <a href="https://smart-house-price-api.onrender.com"><strong> API Health</strong></a> ·
+  <a href="https://lucknow-house-price-api.onrender.com"><strong> API Health</strong></a> ·
   <a href="https://github.com/abhishekkasaudhan45/smart-house-price-prediction"><strong> GitHub</strong></a>
 </p>
 
@@ -39,14 +39,14 @@ Flask API (Render — Docker container)
 
 ## Model Performance
 
-| Model | R² Score | RMSE (₹) | MAE (₹) | Rank |
+| Model | R² Score | RMSE ($) | MAE ($) | Rank |
 |---|---|---|---|---|
-| **Linear Regression** | **0.9733** | **₹26,739** | **₹21,019** | 🏆 **1** |
-| XGBoost | 0.9387 | ₹40,489 | ₹32,748 | 2 |
-| Random Forest | 0.8962 | ₹52,678 | ₹41,974 | 3 |
-| MLPRegressor (Neural Net) | -25.30 | ₹8,38,508 | ₹8,22,413 | 4 |
+| **Random Forest** | **0.8721** | **$31,325** | **$20,948** | 1 |
+| XGBoost | 0.8480 | $34,148 | $22,517 | 2 |
+| Linear Regression | 0.7755 | $41,501 | $27,306 | 3 |
+| MLPRegressor (Neural Net) | 0.5006 | $61,893 | $48,404 | 4 |
 
-> **Winner:** Linear Regression selected by lowest RMSE on test holdout (20%).
+> **Winner:** Random Forest selected by lowest RMSE on test holdout (20%).
 
 ### Model Comparison Chart
 
@@ -57,11 +57,11 @@ Flask API (Render — Docker container)
 ![SHAP Feature Importance](Backend_API/feature_importance.png)
 
 **Top price drivers identified:**
-1. **Area (sq ft)** — strongest determinant of home price
-2. **Swimming Pool** — premium feature adding significant value
-3. **Bedrooms** — more rooms command higher prices
-4. **Garage** — adds substantial property value
-5. **Total Rooms** — overall property size signal
+1. **Overall Quality** — strongest determinant of home price
+2. **Area (sq ft)** — larger homes command higher prices
+3. **Year Built** — newer homes are valued more
+4. **Total Rooms** — overall property size signal
+5. **Bath/Bed Ratio** — bathroom-to-bedroom ratio
 
 ---
 
@@ -103,7 +103,7 @@ Flask API (Render — Docker container)
 | **Containerization** | Docker (python:3.12), docker-compose |
 | **CI/CD** | GitHub Actions, Render Deploy Hooks |
 | **Deployment** | Render (API), Vercel (Frontend) |
-| **Dataset** | 1,000 synthetic house listings, 8 features |
+| **Dataset** | Kaggle "House Prices" — 1,460 real listings, 8 features |
 
 ---
 
@@ -196,7 +196,7 @@ python -m pytest tests/ -v
 ### Vercel (Frontend)
 1. Push `Fronted_UI/` to GitHub
 2. Vercel → Import Project → connect repo
-3. It auto-deploys. The JS connects to `https://smart-house-price-api.onrender.com`
+3. It auto-deploys. The JS connects to `https://lucknow-house-price-api.onrender.com`
 
 ---
 

@@ -9,7 +9,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy model artifacts and source code
 COPY model.pkl scaler.pkl label_encoders.pkl feature_columns.pkl model_metrics.pkl ./
 COPY feature_importance.png actual_vs_predicted.png ./
-COPY app.py .
+COPY app.py database.py models.py ./
 
 EXPOSE 10000
 

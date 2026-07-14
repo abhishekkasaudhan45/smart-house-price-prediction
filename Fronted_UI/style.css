@@ -490,6 +490,31 @@ body {
     color: var(--text-secondary);
 }
 
+/* ===== SERVER STATUS ===== */
+.server-status {
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 6px 16px;
+    border-radius: 20px;
+    display: inline-block;
+    transition: opacity 0.5s;
+}
+
+.server-status.waking {
+    background: rgba(243, 156, 18, 0.2);
+    color: #f39c12;
+}
+
+.server-status.ready {
+    background: rgba(39, 174, 96, 0.2);
+    color: #27ae60;
+}
+
+.server-status.fade-out {
+    opacity: 0;
+}
+
 /* ===== FOOTER ===== */
 .footer {
     background: var(--secondary);

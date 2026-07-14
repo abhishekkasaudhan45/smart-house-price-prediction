@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import pickle
+import joblib
 import numpy as np
 import os
 
@@ -12,8 +13,8 @@ app = Flask(__name__)
 CORS(app)
 
 # Load ML artifacts
-model = pickle.load(open("model.pkl", "rb"))
-scaler = pickle.load(open("scaler.pkl", "rb"))
+model = joblib.load("model.pkl")
+scaler = joblib.load("scaler.pkl")
 feature_columns = pickle.load(open("feature_columns.pkl", "rb"))
 model_metrics = pickle.load(open("model_metrics.pkl", "rb"))
 
