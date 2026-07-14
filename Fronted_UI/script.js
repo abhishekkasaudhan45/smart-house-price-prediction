@@ -134,13 +134,13 @@ form.addEventListener("submit", async (e) => {
         serverAwake = true;
         setServerStatus("Server ready", "ready");
 
-        predictedPrice.textContent = Number(result.predicted_price).toLocaleString("en-US", {
+        predictedPrice.textContent = Number(result.predicted_price).toLocaleString("en-IN", {
             maximumFractionDigits: 0,
         });
-        ciLow.textContent = Number(result.confidence_interval.low).toLocaleString("en-US", {
+        ciLow.textContent = Number(result.confidence_interval.low).toLocaleString("en-IN", {
             maximumFractionDigits: 0,
         });
-        ciHigh.textContent = Number(result.confidence_interval.high).toLocaleString("en-US", {
+        ciHigh.textContent = Number(result.confidence_interval.high).toLocaleString("en-IN", {
             maximumFractionDigits: 0,
         });
         modelUsed.textContent = result.model_used;
@@ -177,8 +177,8 @@ function renderComparisonTable(data) {
         row.innerHTML = `
             <td>${name} ${index === 0 ? '\u{1F3C6}' : ''}</td>
             <td>${metrics.R2}</td>
-            <td>$${Number(metrics.RMSE).toLocaleString("en-US")}</td>
-            <td>$${Number(metrics.MAE).toLocaleString("en-US")}</td>
+            <td>₹${Number(metrics.RMSE).toLocaleString("en-IN")}</td>
+            <td>₹${Number(metrics.MAE).toLocaleString("en-IN")}</td>
             <td class="rank-col"><span class="rank-badge ${rankClass}">${index + 1}</span></td>
         `;
         tbody.appendChild(row);

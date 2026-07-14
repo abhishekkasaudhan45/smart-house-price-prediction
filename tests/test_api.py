@@ -53,7 +53,7 @@ class TestPredictValidation:
         assert "predicted_price" in data
         assert isinstance(data["predicted_price"], float)
         assert data["predicted_price"] > 0
-        assert data["currency"] == "USD"
+        assert data["currency"] == "INR"
 
     def test_valid_input_has_confidence_interval(self, client):
         resp = client.post("/predict", json=VALID_INPUT)

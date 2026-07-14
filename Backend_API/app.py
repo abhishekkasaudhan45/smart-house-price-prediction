@@ -19,6 +19,7 @@ feature_columns = pickle.load(open("feature_columns.pkl", "rb"))
 model_metrics = pickle.load(open("model_metrics.pkl", "rb"))
 
 CONFIDENCE_INTERVAL = 0.15  # ±15%
+USD_TO_INR = 85.0
 
 FIELD_RANGES = {
     "area": {"type": float, "min": 200, "max": 30000, "label": "Living Area (sq ft)"},
@@ -126,7 +127,8 @@ def predict():
         )
 
         input_scaled = scaler.transform(input_data)
-        prediction = float(model.predict(input_scaled)[0])
+        prediction_usd = float(model.predict(input_scaled)[0])
+        prediction = round(prediction_usd * USD_TO_INR, 2)
 
         ci_low = round(prediction * (1 - CONFIDENCE_INTERVAL), 2)
         ci_high = round(prediction * (1 + CONFIDENCE_INTERVAL), 2)
@@ -160,7 +162,7 @@ def predict():
                 "confidence_band": f"±{int(CONFIDENCE_INTERVAL * 100)}%",
                 "model_used": model_metrics["best_model"],
                 "model_metrics": model_metrics["comparison"],
-                "currency": "USD",
+                "currency": "INR",
             }
         )
 

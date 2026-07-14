@@ -39,12 +39,12 @@ Flask API (Render — Docker container)
 
 ## Model Performance
 
-| Model | R² Score | RMSE ($) | MAE ($) | Rank |
+| Model | R² Score | RMSE (₹) | MAE (₹) | Rank |
 |---|---|---|---|---|
-| **Random Forest** | **0.8721** | **$31,325** | **$20,948** | 1 |
-| XGBoost | 0.8480 | $34,148 | $22,517 | 2 |
-| Linear Regression | 0.7755 | $41,501 | $27,306 | 3 |
-| MLPRegressor (Neural Net) | 0.5006 | $61,893 | $48,404 | 4 |
+| **Random Forest** | **0.8721** | **₹26,62,593** | **₹17,80,588** | 1 |
+| XGBoost | 0.8480 | ₹29,02,541 | ₹19,13,908 | 2 |
+| Linear Regression | 0.7755 | ₹35,27,543 | ₹23,20,974 | 3 |
+| MLPRegressor (Neural Net) | 0.5006 | ₹52,60,919 | ₹41,14,303 | 4 |
 
 > **Winner:** Random Forest selected by lowest RMSE on test holdout (20%).
 
