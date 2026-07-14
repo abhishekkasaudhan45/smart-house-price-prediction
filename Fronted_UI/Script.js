@@ -19,7 +19,9 @@ const FIELD_RULES = {
 };
 
 const CACHE_KEY = "shpp_metrics_cache";
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_TTL = 24 * 60 * 60 * 1000;
+
+let serverAwake = false;
 
 function getCachedMetrics() {
     try {
@@ -39,9 +41,7 @@ function setCachedMetrics(data) {
             timestamp: Date.now(),
             data: data,
         }));
-    } catch {
-        // localStorage full or unavailable
-    }
+    } catch {}
 }
 
 function validateField(id) {
@@ -74,6 +74,16 @@ function clearFieldErrors() {
     }
 }
 
+function setServerStatus(text, state) {
+    const statusEl = document.getElementById("serverStatus");
+    if (!statusEl) return;
+    statusEl.textContent = text;
+    statusEl.className = "server-status " + state;
+    if (state === "ready") {
+        setTimeout(() => statusEl.classList.add("fade-out"), 3000);
+    }
+}
+
 for (const id of Object.keys(FIELD_RULES)) {
     document.getElementById(id)?.addEventListener("blur", () => validateField(id));
 }
@@ -90,6 +100,9 @@ form.addEventListener("submit", async (e) => {
 
     predictBtn.disabled = true;
     loadingSpinner.classList.remove("hidden");
+    document.querySelector("#loadingSpinner p").textContent = serverAwake
+        ? "Predicting..."
+        : "Waking up server & predicting...";
     resultSection.classList.add("hidden");
 
     const data = {
@@ -108,7 +121,7 @@ form.addEventListener("submit", async (e) => {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
-        }, 1, 4000);
+        });
 
         const result = await response.json();
         if (!response.ok) {
@@ -117,6 +130,9 @@ form.addEventListener("submit", async (e) => {
             }
             throw new Error(result.error || "Prediction failed");
         }
+
+        serverAwake = true;
+        setServerStatus("Server ready", "ready");
 
         predictedPrice.textContent = Number(result.predicted_price).toLocaleString("en-US", {
             maximumFractionDigits: 0,
@@ -131,7 +147,7 @@ form.addEventListener("submit", async (e) => {
         resultSection.classList.remove("hidden");
         resultSection.scrollIntoView({ behavior: "smooth", block: "center" });
     } catch (error) {
-        formErrorMessage.textContent = error.message;
+        formErrorMessage.textContent = error.message || "Server is starting up. Please try again in 30 seconds.";
         formError.classList.remove("hidden");
     } finally {
         predictBtn.disabled = false;
@@ -151,6 +167,7 @@ function renderComparisonTable(data) {
     const tableWrapper = document.getElementById("tableWrapper");
     const tableLoading = document.getElementById("tableLoading");
     const tbody = document.getElementById("comparisonBody");
+    if (!data.comparison) return;
     const sorted = Object.entries(data.comparison).sort((a, b) => a[1].RMSE - b[1].RMSE);
     tbody.innerHTML = "";
     sorted.forEach(([name, metrics], index) => {
@@ -185,17 +202,16 @@ function renderFeatureImportance(data) {
 }
 
 async function loadModelComparison() {
-    const cached = getCachedMetrics();
-    if (cached && cached.comparison) {
-        renderComparisonTable(cached);
-    }
     try {
         const response = await fetch(API_URL + "/metrics");
         const data = await response.json();
-        if (!response.ok) throw new Error("Failed to load metrics");
+        if (!response.ok) throw new Error("Failed");
         setCachedMetrics(data);
         renderComparisonTable(data);
-    } catch (error) {
+        serverAwake = true;
+        setServerStatus("Server ready", "ready");
+    } catch {
+        const cached = getCachedMetrics();
         if (!cached) {
             document.getElementById("tableLoading").innerHTML =
                 '<p style="color: var(--accent-red);"><i class="fas fa-exclamation-circle"></i> Could not load model comparison</p>';
@@ -215,52 +231,29 @@ async function loadFeatureImportance() {
         loading.innerHTML = '<p style="color: var(--accent-red);"><i class="fas fa-exclamation-circle"></i> Could not load feature importance chart</p>';
     };
 
-    const cached = getCachedMetrics();
-    if (cached) {
-        renderFeatureImportance(cached);
-    }
     try {
         const response = await fetch(API_URL + "/metrics");
         const data = await response.json();
         renderFeatureImportance(data);
-    } catch {
-        // silent - cached data already shown if available
-    }
+    } catch {}
 }
 
-async function wakeUpServer() {
-    const statusEl = document.getElementById("serverStatus");
-    if (statusEl) {
-        statusEl.textContent = "Connecting to server...";
-        statusEl.className = "server-status waking";
-    }
-    try {
-        const res = await fetch(API_URL + "/", { signal: AbortSignal.timeout(60000) });
-        if (res.ok) {
-            if (statusEl) {
-                statusEl.textContent = "Server ready";
-                statusEl.className = "server-status ready";
-                setTimeout(() => statusEl.classList.add("fade-out"), 3000);
-            }
-            return true;
-        }
-    } catch {
-        if (statusEl) {
-            statusEl.textContent = "Server waking up... (free tier, ~30s)";
-            statusEl.className = "server-status waking";
-        }
-    }
-    return false;
-}
-
-async function fetchWithRetry(url, options, retries = 2, delayMs = 3000) {
+async function fetchWithRetry(url, options, retries = 3, delayMs = 5000) {
     for (let attempt = 0; attempt <= retries; attempt++) {
         if (attempt > 0) {
-            document.querySelector("#loadingSpinner p").textContent = "Retrying...";
+            document.querySelector("#loadingSpinner p").textContent =
+                "Server waking up... retry " + attempt + "/" + retries;
             await new Promise(r => setTimeout(r, delayMs));
         }
         try {
-            const response = await fetch(url, options);
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 30000);
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal,
+            });
+            clearTimeout(timeout);
+            if (response.status === 503 && attempt < retries) continue;
             return response;
         } catch (err) {
             if (attempt === retries) throw err;
@@ -268,17 +261,30 @@ async function fetchWithRetry(url, options, retries = 2, delayMs = 3000) {
     }
 }
 
-async function init() {
-    const cached = getCachedMetrics();
-    if (cached) {
-        renderComparisonTable(cached);
-        renderFeatureImportance(cached);
+async function wakeUpServer() {
+    setServerStatus("Connecting to server...", "waking");
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 60000);
+        const res = await fetch(API_URL + "/", { signal: controller.signal });
+        clearTimeout(timeout);
+        if (res.ok) {
+            serverAwake = true;
+            setServerStatus("Server ready", "ready");
+        }
+    } catch {
+        setServerStatus("Server waking up... (free tier, ~30s)", "waking");
     }
-
-    const serverReady = await wakeUpServer();
-
-    loadModelComparison();
-    loadFeatureImportance();
 }
 
-init();
+// Show cached data instantly, then wake server & refresh
+const cached = getCachedMetrics();
+if (cached) {
+    renderComparisonTable(cached);
+    renderFeatureImportance(cached);
+}
+
+// Fire all in parallel — don't block anything
+wakeUpServer();
+loadModelComparison();
+loadFeatureImportance();
