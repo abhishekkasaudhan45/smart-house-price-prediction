@@ -1,4 +1,4 @@
-const API_URL = "https://lucknow-house-price-api.onrender.com";
+const API_URL = "https://smart-house-price-api.onrender.com";
 
 const form = document.getElementById("predictionForm");
 const resultSection = document.getElementById("resultSection");

@@ -219,7 +219,7 @@ Replace bare try/except with structured validation:
 - Retrain all models on real data
 - Compare performance vs synthetic data
 
-**Files:** `ML_Training/scraper.py`, `ML_Training/lucknow_noida_data.csv`
+**Files:** `ML_Training/Data.csv`, `ML_Training/train_kaggle.py`
 
 ### 2.2 Geo-Aware Features
 - Add location/neighborhood as a feature

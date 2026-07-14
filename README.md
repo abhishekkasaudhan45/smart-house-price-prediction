@@ -1,8 +1,8 @@
 # Smart House Price Predictor
 
 <p align="center">
-  <a href="https://lucknow-house-price.vercel.app"><strong> Live Demo</strong></a> ·
-  <a href="https://lucknow-house-price-api.onrender.com"><strong> API Health</strong></a> ·
+  <a href="https://smart-house-price.vercel.app"><strong> Live Demo</strong></a> ·
+  <a href="https://smart-house-price-api.onrender.com"><strong> API Health</strong></a> ·
   <a href="https://github.com/abhishekkasaudhan45/smart-house-price-prediction"><strong> GitHub</strong></a>
 </p>
 
@@ -196,7 +196,7 @@ python -m pytest tests/ -v
 ### Vercel (Frontend)
 1. Push `Fronted_UI/` to GitHub
 2. Vercel → Import Project → connect repo
-3. It auto-deploys. The JS connects to `https://lucknow-house-price-api.onrender.com`
+3. It auto-deploys. The JS connects to `https://smart-house-price-api.onrender.com`
 
 ---
 
