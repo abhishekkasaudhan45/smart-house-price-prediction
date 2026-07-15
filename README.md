@@ -1,7 +1,7 @@
 # Smart House Price Predictor
 
 <p align="center">
-  <a href="https://smart-house-price.vercel.app"><strong> Live Demo</strong></a> ·
+  <a href="https://smart-house-price.abhishektech.me/"><strong> Live Demo</strong></a> ·
   <a href="https://lucknow-house-price-api.onrender.com"><strong> API Health</strong></a> ·
   <a href="https://github.com/abhishekkasaudhan45/smart-house-price-prediction"><strong> GitHub</strong></a>
 </p>
