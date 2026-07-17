@@ -253,11 +253,6 @@ with open("../Backend_API/model_metrics.pkl", "wb") as f:
     pickle.dump(model_metrics, f)
 print(">> Saved model_metrics.pkl")
 
-# Dummy label_encoders for backward compat
-with open("../Backend_API/label_encoders.pkl", "wb") as f:
-    pickle.dump({}, f)
-print(">> Saved label_encoders.pkl")
-
 print("\nTop Price Drivers:")
 for _, row in fi_df.iterrows():
     print(f"  {row['Feature']}: {row['Importance']:.4f}")
