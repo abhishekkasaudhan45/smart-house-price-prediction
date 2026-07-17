@@ -51,6 +51,30 @@ function formatLakhs(lakhs) {
     return "₹" + lakhs.toFixed(1) + " Lakh";
 }
 
+const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// Animate a number from 0 → target lakhs, formatting each frame. Falls back to
+// an instant set when the user prefers reduced motion.
+function countUpLakhs(el, targetLakhs, finalText) {
+    if (prefersReducedMotion || !Number.isFinite(targetLakhs)) {
+        el.textContent = finalText;
+        return;
+    }
+    const duration = 700;
+    const start = performance.now();
+    function frame(now) {
+        const t = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+        if (t < 1) {
+            el.textContent = formatLakhs(targetLakhs * eased);
+            requestAnimationFrame(frame);
+        } else {
+            el.textContent = finalText; // snap to exact server-formatted value
+        }
+    }
+    requestAnimationFrame(frame);
+}
+
 function validateField(id) {
     const el = document.getElementById(id);
     const errorEl = document.getElementById("error-" + id);
@@ -189,8 +213,13 @@ form.addEventListener("submit", async (e) => {
         serverAwake = true;
         setServerStatus("Server ready", "ready");
 
-        predictedPrice.textContent =
-            result.price_display || formatLakhs(result.predicted_price_lakhs);
+        const finalPrice = result.price_display || formatLakhs(result.predicted_price_lakhs);
+        const targetLakhs = Number(
+            result.predicted_price_lakhs != null
+                ? result.predicted_price_lakhs
+                : result.predicted_price / 100000
+        );
+        countUpLakhs(predictedPrice, targetLakhs, finalPrice);
         ciLow.textContent = result.confidence_interval.low_display
             || formatLakhs(result.confidence_interval.low / 100000);
         ciHigh.textContent = result.confidence_interval.high_display
