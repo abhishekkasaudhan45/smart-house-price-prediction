@@ -1,7 +1,7 @@
 # Bengaluru House Price Predictor
 
 <p align="center">
-  <a href="https://smart-house-price.abhishektech.me"><strong> Live Demo</strong></a> ·
+  <a href="https://blrpricer.abhishektech.me"><strong> Live Demo</strong></a> ·
   <a href="https://lucknow-house-price-api.onrender.com"><strong> API Health</strong></a> ·
   <a href="https://github.com/abhishekkasaudhan45/smart-house-price-prediction"><strong> GitHub</strong></a>
 </p>
@@ -198,7 +198,7 @@ python -m pytest tests/ -v
 ### Vercel (Frontend)
 1. Push `Fronted_UI/` to GitHub
 2. Vercel → Import Project → connect repo
-3. It auto-deploys at the custom domain `smart-house-price.abhishektech.me`
+3. It auto-deploys at the custom domain `blrpricer.abhishektech.me`
 
 ---
 
