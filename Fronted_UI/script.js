@@ -1,4 +1,4 @@
-const API_URL = "https://lucknow-house-price-api.onrender.com";
+const API_URL = window.location.hostname === "localhost" ? "http://localhost:10000" : "https://lucknow-house-price-api.onrender.com";
 
 const form = document.getElementById("predictionForm");
 const resultSection = document.getElementById("resultSection");
@@ -12,20 +12,19 @@ const formError = document.getElementById("formError");
 const formErrorMessage = document.getElementById("formErrorMessage");
 
 const FIELD_RULES = {
-    area: { min: 200, max: 30000, label: "Living Area (sq ft)" },
-    bedrooms: { min: 0, max: 10, label: "Bedrooms" },
-    bathrooms: { min: 0, max: 10, label: "Bathrooms" },
-    year_built: { min: 1850, max: 2026, label: "Year Built" },
+    total_sqft: { min: 300, max: 30000, label: "Total Area (sq ft)" },
+    bath: { min: 1, max: 10, label: "Bathrooms" },
 };
 
-const CACHE_KEY = "shpp_metrics_cache";
+const CACHE_KEY = "bhpp_metrics_cache";
+const LOCATIONS_CACHE_KEY = "bhpp_locations_cache";
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
 let serverAwake = false;
 
-function getCachedMetrics() {
+function getCached(key) {
     try {
-        const raw = localStorage.getItem(CACHE_KEY);
+        const raw = localStorage.getItem(key);
         if (!raw) return null;
         const cached = JSON.parse(raw);
         if (Date.now() - cached.timestamp > CACHE_TTL) return null;
@@ -35,13 +34,21 @@ function getCachedMetrics() {
     }
 }
 
-function setCachedMetrics(data) {
+function setCached(key, data) {
     try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({
+        localStorage.setItem(key, JSON.stringify({
             timestamp: Date.now(),
             data: data,
         }));
     } catch {}
+}
+
+// Format lakhs the way Indians read prices: "₹85.2 Lakh" / "₹1.25 Cr"
+function formatLakhs(lakhs) {
+    if (lakhs >= 100) {
+        return "₹" + (lakhs / 100).toFixed(2) + " Cr";
+    }
+    return "₹" + lakhs.toFixed(1) + " Lakh";
 }
 
 function validateField(id) {
@@ -65,8 +72,21 @@ function validateField(id) {
     return true;
 }
 
+function validateLocation() {
+    const el = document.getElementById("location");
+    const errorEl = document.getElementById("error-location");
+    if (!el.value) {
+        errorEl.textContent = "Please select a location";
+        el.classList.add("input-error");
+        return false;
+    }
+    errorEl.textContent = "";
+    el.classList.remove("input-error");
+    return true;
+}
+
 function clearFieldErrors() {
-    for (const id of Object.keys(FIELD_RULES)) {
+    for (const id of [...Object.keys(FIELD_RULES), "location"]) {
         const el = document.getElementById(id);
         const errorEl = document.getElementById("error-" + id);
         if (el) el.classList.remove("input-error");
@@ -88,11 +108,44 @@ for (const id of Object.keys(FIELD_RULES)) {
     document.getElementById(id)?.addEventListener("blur", () => validateField(id));
 }
 
+function populateLocations(locations) {
+    const select = document.getElementById("location");
+    select.innerHTML = '<option value="">— Select location —</option>';
+    for (const loc of locations) {
+        const opt = document.createElement("option");
+        opt.value = loc;
+        opt.textContent = loc;
+        select.appendChild(opt);
+    }
+    const other = document.createElement("option");
+    other.value = "other";
+    other.textContent = "Other (not listed)";
+    select.appendChild(other);
+}
+
+async function loadLocations() {
+    const cached = getCached(LOCATIONS_CACHE_KEY);
+    if (cached) populateLocations(cached);
+    try {
+        const response = await fetch(API_URL + "/locations");
+        const data = await response.json();
+        if (response.ok && data.locations) {
+            setCached(LOCATIONS_CACHE_KEY, data.locations);
+            populateLocations(data.locations);
+        }
+    } catch {
+        if (!cached) {
+            document.getElementById("location").innerHTML =
+                '<option value="other">Other (server waking up...)</option>';
+        }
+    }
+}
+
 form.addEventListener("submit", async (e) => {
     e.preventDefault();
     formError.classList.add("hidden");
     clearFieldErrors();
-    let valid = true;
+    let valid = validateLocation();
     for (const id of Object.keys(FIELD_RULES)) {
         if (!validateField(id)) valid = false;
     }
@@ -106,15 +159,14 @@ form.addEventListener("submit", async (e) => {
     resultSection.classList.add("hidden");
 
     const data = {
-        area: Number(document.getElementById("area").value),
-        bedrooms: Number(document.getElementById("bedrooms").value),
-        bathrooms: Number(document.getElementById("bathrooms").value),
-        overall_qual: Number(document.getElementById("overall_qual").value),
-        year_built: Number(document.getElementById("year_built").value),
-        has_pool: document.getElementById("has_pool").value,
-        has_garage: document.getElementById("has_garage").value,
-        has_ac: document.getElementById("has_ac").value,
+        location: document.getElementById("location").value,
+        total_sqft: Number(document.getElementById("total_sqft").value),
+        bhk: Number(document.getElementById("bhk").value),
+        bath: Number(document.getElementById("bath").value),
+        balcony: Number(document.getElementById("balcony").value),
+        ready_to_move: document.getElementById("ready_to_move").value,
     };
+    console.log("[predict] request payload:", data);
 
     try {
         const response = await fetchWithRetry(API_URL + "/predict", {
@@ -124,29 +176,32 @@ form.addEventListener("submit", async (e) => {
         });
 
         const result = await response.json();
+        console.log("[predict] response (" + response.status + "):", result);
         if (!response.ok) {
             if (result.details && Array.isArray(result.details)) {
                 throw new Error(result.details.map(d => d.message).join(". "));
             }
-            throw new Error(result.error || "Prediction failed");
+            throw new Error(
+                "Prediction failed: " + response.status + " — " + (result.error || "unknown error")
+            );
         }
 
         serverAwake = true;
         setServerStatus("Server ready", "ready");
 
-        predictedPrice.textContent = Number(result.predicted_price).toLocaleString("en-IN", {
-            maximumFractionDigits: 0,
-        });
-        ciLow.textContent = Number(result.confidence_interval.low).toLocaleString("en-IN", {
-            maximumFractionDigits: 0,
-        });
-        ciHigh.textContent = Number(result.confidence_interval.high).toLocaleString("en-IN", {
-            maximumFractionDigits: 0,
-        });
+        predictedPrice.textContent =
+            result.price_display || formatLakhs(result.predicted_price_lakhs);
+        ciLow.textContent = result.confidence_interval.low_display
+            || formatLakhs(result.confidence_interval.low / 100000);
+        ciHigh.textContent = result.confidence_interval.high_display
+            || formatLakhs(result.confidence_interval.high / 100000);
+        const badge = document.getElementById("confidenceBadge");
+        if (badge && result.confidence_band) badge.textContent = result.confidence_band;
         modelUsed.textContent = result.model_used;
         resultSection.classList.remove("hidden");
         resultSection.scrollIntoView({ behavior: "smooth", block: "center" });
     } catch (error) {
+        console.error("[predict] error:", error);
         formErrorMessage.textContent = error.message || "Server is starting up. Please try again in 30 seconds.";
         formError.classList.remove("hidden");
     } finally {
@@ -177,8 +232,8 @@ function renderComparisonTable(data) {
         row.innerHTML = `
             <td>${name} ${index === 0 ? '\u{1F3C6}' : ''}</td>
             <td>${metrics.R2}</td>
-            <td>₹${Number(metrics.RMSE).toLocaleString("en-IN")}</td>
-            <td>₹${Number(metrics.MAE).toLocaleString("en-IN")}</td>
+            <td>₹${Number(metrics.RMSE).toFixed(1)}L</td>
+            <td>₹${Number(metrics.MAE).toFixed(1)}L</td>
             <td class="rank-col"><span class="rank-badge ${rankClass}">${index + 1}</span></td>
         `;
         tbody.appendChild(row);
@@ -206,12 +261,12 @@ async function loadModelComparison() {
         const response = await fetch(API_URL + "/metrics");
         const data = await response.json();
         if (!response.ok) throw new Error("Failed");
-        setCachedMetrics(data);
+        setCached(CACHE_KEY, data);
         renderComparisonTable(data);
         serverAwake = true;
         setServerStatus("Server ready", "ready");
     } catch {
-        const cached = getCachedMetrics();
+        const cached = getCached(CACHE_KEY);
         if (!cached) {
             document.getElementById("tableLoading").innerHTML =
                 '<p style="color: var(--accent-red);"><i class="fas fa-exclamation-circle"></i> Could not load model comparison</p>';
@@ -278,13 +333,14 @@ async function wakeUpServer() {
 }
 
 // Show cached data instantly, then wake server & refresh
-const cached = getCachedMetrics();
-if (cached) {
-    renderComparisonTable(cached);
-    renderFeatureImportance(cached);
+const cachedMetrics = getCached(CACHE_KEY);
+if (cachedMetrics) {
+    renderComparisonTable(cachedMetrics);
+    renderFeatureImportance(cachedMetrics);
 }
 
 // Fire all in parallel — don't block anything
 wakeUpServer();
+loadLocations();
 loadModelComparison();
 loadFeatureImportance();

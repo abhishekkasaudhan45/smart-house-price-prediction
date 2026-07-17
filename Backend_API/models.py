@@ -6,19 +6,17 @@ from database import Base
 
 
 class Prediction(Base):
-    """Stores each prediction request and result."""
+    """Stores each prediction request and result (Bengaluru schema)."""
 
     __tablename__ = "predictions"
 
     id = Column(Integer, primary_key=True, index=True)
-    area = Column(Float, nullable=False)
-    bedrooms = Column(Integer, nullable=False)
-    bathrooms = Column(Integer, nullable=False)
-    stories = Column(Integer, nullable=False)
-    parking = Column(Integer, nullable=False)
-    has_pool = Column(String(5), nullable=False)
-    has_garage = Column(String(5), nullable=False)
-    has_ac = Column(String(5), nullable=False)
+    total_sqft = Column(Float, nullable=False)
+    bhk = Column(Integer, nullable=False)
+    bath = Column(Integer, nullable=False)
+    balcony = Column(Integer, nullable=False)
+    location = Column(String(100), nullable=False)
+    ready_to_move = Column(Integer, nullable=False)
     predicted_price = Column(Float, nullable=False)
     confidence_low = Column(Float, nullable=False)
     confidence_high = Column(Float, nullable=False)

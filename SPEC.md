@@ -1,141 +1,111 @@
-# Spec: Phase 2 — Docker Containerization & CI/CD Pipeline
+# Spec: Phase 4 — Real Indian Dataset, Statistical Intervals & Naming Cleanup
 
 ## Objective
 
-Containerize the Smart House Price Predictor Flask API with Docker, and set up a GitHub Actions CI/CD pipeline that runs tests, builds the image, and auto-deploys to Render. This proves production engineering skills: containerization, CI/CD, and infrastructure-as-code.
+Replace the US Ames/Iowa dataset (whose prices were dishonestly "converted" to INR by
+multiplying by 85) with the real **Bengaluru House Data** dataset (13,320 real Indian
+listings, prices natively in ₹ lakhs). Replace the hardcoded ±15% confidence interval
+with statistical prediction intervals derived from Random Forest per-tree quantiles.
+Clean up naming leftovers (`stories`/`parking` DB columns storing quality/year).
 
 **Success criteria:**
-- `docker build` produces a working image serving the API on port 10000
-- `docker run` starts the API, responds to all 3 endpoints
-- GitHub Actions runs `make check` (format + lint + test) on every push
-- On push to `main`, GitHub Actions deploys to Render via deploy hook
-- Image is < 1.5GB (with pre-trained model artifacts)
-- Makefile docker targets (`docker-build`, `docker-run`, `docker-stop`) work end-to-end
+- Model trained on 13,320 real Bengaluru listings, target in ₹ lakhs (no currency conversion)
+- Best model R² ≥ 0.75 on held-out test set
+- `/predict` returns per-prediction 90% intervals from RF tree quantiles (`interval_method: "rf_quantile_90"`)
+- `/locations` endpoint serves the location dropdown
+- Frontend shows prices in Indian format ("₹85.2 Lakh" / "₹1.2 Cr")
+- DB schema columns match real features; Alembic migration `0002` applied
+- All pytest tests green; live site verified end-to-end
 
 ---
 
-## Tech Stack
+## Dataset
 
-| Tool | Version | Purpose |
-|---|---|---|
-| Docker | 24+ | Containerization |
-| GitHub Actions | — | CI/CD pipeline |
-| Render Deploy Hooks | — | Trigger production deploy from CI |
-| gunicorn | Already in requirements | Production WSGI server inside container |
+| Property | Value |
+|---|---|
+| Source | Kaggle "Bengaluru House Data" (CC license) |
+| Rows | 13,320 |
+| Target | `price` in ₹ lakhs (min 8, median 72, max 3600) |
+| Raw columns | area_type, availability, location, size, society, total_sqft, bath, balcony, price |
+| Locations | 1,305 unique (grouped: <10 listings → "other") |
+
+### Cleaning rules
+- `total_sqft`: parse ranges ("1000-1200" → mean), drop non-numeric units (e.g. "34.46Sq. Meter")
+- `bhk`: extract int from `size` ("2 BHK" → 2)
+- Drop rows: sqft/bhk < 300 (data errors), price-per-sqft outliers beyond 1 std within location
+- `ready_to_move`: 1 if availability == "Ready To Move" else 0
+- One-hot encode `location` after grouping rare ones into "other"
+
+### Features
+`total_sqft`, `bath`, `balcony`, `bhk`, `ready_to_move`, `location_*` (one-hot, ~56+)
 
 ---
 
-## Commands
+## API Contract Changes
 
-```bash
-# Build Docker image
-cd Backend_API && docker build -t house-predictor .
-# or
-make docker-build
+### POST /predict (new request shape)
+```json
+{
+  "total_sqft": 1200, "bhk": 2, "bath": 2, "balcony": 1,
+  "location": "Whitefield", "ready_to_move": 1
+}
+```
 
-# Run container locally
-docker run -d --name house-price -p 10000:10000 house-predictor
-# or
-make docker-run
+### POST /predict (new response shape)
+```json
+{
+  "predicted_price": 8520000,
+  "predicted_price_lakhs": 85.2,
+  "price_display": "₹85.2 Lakh",
+  "ci_low": 7100000, "ci_high": 10200000,
+  "interval_method": "rf_quantile_90",
+  "currency": "INR", "model_used": "Random Forest"
+}
+```
 
-# Stop container
-make docker-stop
-
-# View logs
-make docker-logs
-
-# Full CI check (runs on every push)
-make check
+### GET /locations (new)
+```json
+{ "locations": ["Whitefield", "Sarjapur Road", ...], "count": 56 }
 ```
 
 ---
 
-## Project Structure (Additions)
+## Prediction Intervals
 
+Instead of `price * 0.85 / 1.15`:
+```python
+tree_preds = np.array([t.predict(x_scaled) for t in model.estimators_])
+ci_low, ci_high = np.percentile(tree_preds, [5, 95])
 ```
-Backend_API/
-├── Dockerfile             # NEW — multi-stage or single-stage image
-├── .dockerignore          # NEW — excludes training junk
-
-.github/workflows/
-├── ci.yml                 # MODIFIED — add Docker build + Render deploy
-```
+This is a real 90% prediction interval from the ensemble distribution — resume-defensible.
 
 ---
 
-## Code Style
+## Database Schema (migration 0002)
 
-### Dockerfile
-```dockerfile
-FROM python:3.12-slim
+`predictions` table columns replaced:
+- REMOVE: `area`, `stories`, `parking` (misnamed leftovers)
+- ADD: `total_sqft` Float, `bhk` Int, `bath` Int, `balcony` Int, `location` String(100), `ready_to_move` Int
+- KEEP: `predicted_price`, `confidence_low`, `confidence_high`, `model_used`, `created_at`
 
-WORKDIR /app
-
-# Install system deps (for scikit-learn, numpy)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc build-essential && \
-    rm -rf /var/lib/apt/lists/*
-
-# Copy requirements first (layer caching)
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy model artifacts and app
-COPY model.pkl scaler.pkl label_encoders.pkl feature_columns.pkl model_metrics.pkl ./
-COPY feature_importance.png actual_vs_predicted.png ./
-COPY app.py .
-
-EXPOSE 10000
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
-```
-
-### CI/CD Pipeline (ci.yml additions)
-```yaml
-deploy:
-  needs: check
-  if: github.ref == 'refs/heads/main'
-  steps:
-    - run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}
-```
-
----
-
-## Testing Strategy
-
-| Level | What | How |
-|---|---|---|
-| Local | `make test` runs 7 pytest tests | Same tests from Phase 1 |
-| Container | `curl localhost:10000/` after `docker run` | Manual smoke test |
-| CI | `make check` runs format + lint + pytest | On every push |
-| CD | Render deploy hook fires after tests pass | On push to main |
-
-No Docker-in-CI testing for now (too complex for Phase 2). The CI just builds the image and deploys.
+Demo data — drop & recreate is acceptable.
 
 ---
 
 ## Boundaries
 
-- **Always do:** Use `.dockerignore` to exclude notebooks, cache, git. Pin Python version in base image. Use `--no-cache-dir` for pip. Use gunicorn inside the container, not Flask dev server.
-- **Ask first:** Adding multi-stage builds, switching base image, adding Docker Compose with extra services, adding Docker-in-CI integration tests.
-- **Never do:** Hardcode secrets in Dockerfile or CI config. Store model training data inside the image. Use `:latest` tag without pinning.
+- **Always do:** train in ₹ lakhs natively; keep 4-model comparison; joblib compress=3; keep all existing endpoints working
+- **Ask first:** changing hosting, adding new services, renaming the Render service URL
+- **Never do:** fake currency conversions; hardcoded intervals; committing the raw CSV to git if > 1MB (it's 916KB — OK to commit)
 
 ---
 
 ## Success Criteria Checklist
 
-- [ ] `make docker-build` exits 0
-- [ ] `make docker-run` starts the container, `curl localhost:10000/` returns 200
-- [ ] `make docker-stop` stops and removes the container
-- [ ] GitHub Actions CI runs on push: format → lint → test → all green
-- [ ] GitHub Actions CD triggers on push to main: POST to Render deploy hook
-- [ ] Render receives deploy hook and redeploys
-- [ ] Image size < 1.5GB (docker images)
-
----
-
-## Open Questions
-
-None — all decisions made in the ideation session:
-- Docker only, no PostgreSQL this phase
-- Pre-trained model artifacts copied into image (not retrained)
-- CI + auto-deploy to Render via deploy hook
+- [ ] `train_bengaluru.py` runs clean, R² ≥ 0.75, artifacts saved
+- [ ] `/predict` returns lakh-denominated prices with quantile intervals
+- [ ] `/locations` returns location list
+- [ ] Alembic migration 0002 applies
+- [ ] Frontend form matches new features; prices display as "₹X Lakh / ₹X Cr"
+- [ ] All tests green in CI
+- [ ] Live site returns believable Bengaluru prices

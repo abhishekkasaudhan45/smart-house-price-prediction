@@ -34,5 +34,16 @@ def get_db():
 
 
 def init_db():
-    """Create all tables. Safe to call multiple times."""
+    """Create all tables. Safe to call multiple times.
+
+    If the predictions table exists with the old (pre-Bengaluru) schema,
+    drop and recreate it — history is demo data, mirroring migration 0002.
+    """
+    from sqlalchemy import inspect
+
+    inspector = inspect(engine)
+    if "predictions" in inspector.get_table_names():
+        cols = {c["name"] for c in inspector.get_columns("predictions")}
+        if "total_sqft" not in cols:
+            Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)

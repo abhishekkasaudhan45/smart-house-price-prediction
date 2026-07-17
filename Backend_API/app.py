@@ -18,18 +18,22 @@ scaler = joblib.load("scaler.pkl")
 feature_columns = pickle.load(open("feature_columns.pkl", "rb"))
 model_metrics = pickle.load(open("model_metrics.pkl", "rb"))
 
-CONFIDENCE_INTERVAL = 0.15  # ±15%
-USD_TO_INR = 85.0
+# Split-conformal 90% interval: relative residual quantile from calibration set
+CONFORMAL_Q = model_metrics["conformal_q"]
+LOCATIONS = model_metrics["locations"]
+LAKH = 100000  # model predicts in INR lakhs
 
 FIELD_RANGES = {
-    "area": {"type": float, "min": 200, "max": 30000, "label": "Living Area (sq ft)"},
-    "bedrooms": {"type": int, "min": 0, "max": 10, "label": "Bedrooms"},
-    "bathrooms": {"type": float, "min": 0, "max": 10, "label": "Bathrooms"},
-    "overall_qual": {"type": int, "min": 1, "max": 10, "label": "Overall Quality"},
-    "year_built": {"type": int, "min": 1850, "max": 2026, "label": "Year Built"},
+    "total_sqft": {
+        "type": float,
+        "min": 300,
+        "max": 30000,
+        "label": "Total Area (sq ft)",
+    },
+    "bhk": {"type": int, "min": 1, "max": 10, "label": "BHK"},
+    "bath": {"type": int, "min": 1, "max": 10, "label": "Bathrooms"},
+    "balcony": {"type": int, "min": 0, "max": 5, "label": "Balconies"},
 }
-
-BOOLEAN_FIELDS = ["has_pool", "has_garage", "has_ac"]
 
 # Initialize database tables on startup
 _db_available = True
@@ -37,6 +41,13 @@ try:
     init_db()
 except Exception:
     _db_available = False
+
+
+def format_inr(lakhs):
+    """Format a price in lakhs the way Indians read it: '₹85.2 Lakh' / '₹1.25 Cr'."""
+    if lakhs >= 100:
+        return f"₹{lakhs / 100:.2f} Cr"
+    return f"₹{lakhs:.1f} Lakh"
 
 
 def validate_input(data):
@@ -67,26 +78,67 @@ def validate_input(data):
                 {"field": field, "message": f"{spec['label']} must be a valid number"}
             )
 
-    for field in BOOLEAN_FIELDS:
-        value = data.get(field)
-        if value is None:
-            errors.append({"field": field, "message": f"{field} is required (yes/no)"})
-        elif str(value).lower() not in {"yes", "no"}:
-            errors.append({"field": field, "message": f"{field} must be 'yes' or 'no'"})
+    location = data.get("location")
+    if not location:
+        errors.append({"field": "location", "message": "Location is required"})
+    elif location not in LOCATIONS and location != "other":
+        errors.append(
+            {
+                "field": "location",
+                "message": "Unknown location — pick one from /locations or 'other'",
+            }
+        )
+
+    ready = data.get("ready_to_move")
+    if ready is None:
+        errors.append(
+            {"field": "ready_to_move", "message": "ready_to_move is required (yes/no)"}
+        )
+    elif str(ready).lower() not in {"yes", "no", "0", "1"}:
+        errors.append(
+            {"field": "ready_to_move", "message": "ready_to_move must be 'yes' or 'no'"}
+        )
 
     return errors
+
+
+def build_feature_vector(total_sqft, bath, balcony, bhk, ready_to_move, location):
+    """Build the input row in the exact order the model was trained on."""
+    base = {
+        "total_sqft": total_sqft,
+        "bath": bath,
+        "balcony": balcony,
+        "bhk": bhk,
+        "ready_to_move": ready_to_move,
+    }
+    loc_col = f"loc_{location}"
+    row = []
+    for col in feature_columns:
+        if col in base:
+            row.append(base[col])
+        elif col == loc_col:
+            row.append(1)
+        else:
+            row.append(0)
+    return np.array([row])
 
 
 @app.route("/")
 def home():
     return jsonify(
         {
-            "status": "Smart House Price Predictor API running",
+            "status": "Bengaluru House Price Predictor API running",
             "model": model_metrics["best_model"],
+            "dataset": model_metrics.get("dataset_name", "Bengaluru House Data"),
             "dataset_size": model_metrics["dataset_size"],
             "database": "connected" if _db_available else "unavailable",
         }
     )
+
+
+@app.route("/locations")
+def locations():
+    return jsonify({"locations": LOCATIONS, "count": len(LOCATIONS)})
 
 
 @app.route("/predict", methods=["POST"])
@@ -97,55 +149,39 @@ def predict():
         return jsonify({"error": "Validation failed", "details": errors}), 422
 
     try:
-        area = float(data["area"])
-        bedrooms = int(data["bedrooms"])
-        bathrooms = float(data["bathrooms"])
-        overall_qual = int(data["overall_qual"])
-        year_built = int(data["year_built"])
-        has_pool = 1 if str(data["has_pool"]).lower() == "yes" else 0
-        has_garage = 1 if str(data["has_garage"]).lower() == "yes" else 0
-        has_ac = 1 if str(data["has_ac"]).lower() == "yes" else 0
+        total_sqft = float(data["total_sqft"])
+        bhk = int(data["bhk"])
+        bath = int(data["bath"])
+        balcony = int(data["balcony"])
+        location = data["location"]
+        ready_to_move = 1 if str(data["ready_to_move"]).lower() in {"yes", "1"} else 0
 
-        total_rooms = bedrooms + int(np.ceil(bathrooms))
-        bath_bed_ratio = bathrooms / (bedrooms + 1)
-
-        input_data = np.array(
-            [
-                [
-                    area,
-                    bedrooms,
-                    bathrooms,
-                    overall_qual,
-                    year_built,
-                    has_pool,
-                    has_garage,
-                    has_ac,
-                    total_rooms,
-                    bath_bed_ratio,
-                ]
-            ]
+        input_data = build_feature_vector(
+            total_sqft, bath, balcony, bhk, ready_to_move, location
         )
-
         input_scaled = scaler.transform(input_data)
-        prediction_usd = float(model.predict(input_scaled)[0])
-        prediction = round(prediction_usd * USD_TO_INR, 2)
+        pred_lakhs = float(model.predict(input_scaled)[0])
+        pred_lakhs = max(pred_lakhs, 1.0)  # floor at Rs 1L
 
-        ci_low = round(prediction * (1 - CONFIDENCE_INTERVAL), 2)
-        ci_high = round(prediction * (1 + CONFIDENCE_INTERVAL), 2)
+        # Split-conformal 90% prediction interval (calibrated, not hardcoded)
+        ci_low_lakhs = round(pred_lakhs * (1 - CONFORMAL_Q), 2)
+        ci_high_lakhs = round(pred_lakhs * (1 + CONFORMAL_Q), 2)
+
+        prediction = round(pred_lakhs * LAKH, 2)
+        ci_low = round(ci_low_lakhs * LAKH, 2)
+        ci_high = round(ci_high_lakhs * LAKH, 2)
 
         if _db_available:
             try:
                 db = next(get_db())
                 record = Prediction(
-                    area=area,
-                    bedrooms=bedrooms,
-                    bathrooms=bathrooms,
-                    stories=overall_qual,
-                    parking=year_built,
-                    has_pool=str(data["has_pool"]).lower(),
-                    has_garage=str(data["has_garage"]).lower(),
-                    has_ac=str(data["has_ac"]).lower(),
-                    predicted_price=round(prediction, 2),
+                    total_sqft=total_sqft,
+                    bhk=bhk,
+                    bath=bath,
+                    balcony=balcony,
+                    location=location,
+                    ready_to_move=ready_to_move,
+                    predicted_price=prediction,
                     confidence_low=ci_low,
                     confidence_high=ci_high,
                     model_used=model_metrics["best_model"],
@@ -157,9 +193,17 @@ def predict():
 
         return jsonify(
             {
-                "predicted_price": round(prediction, 2),
-                "confidence_interval": {"low": ci_low, "high": ci_high},
-                "confidence_band": f"±{int(CONFIDENCE_INTERVAL * 100)}%",
+                "predicted_price": prediction,
+                "predicted_price_lakhs": round(pred_lakhs, 2),
+                "price_display": format_inr(pred_lakhs),
+                "confidence_interval": {
+                    "low": ci_low,
+                    "high": ci_high,
+                    "low_display": format_inr(ci_low_lakhs),
+                    "high_display": format_inr(ci_high_lakhs),
+                },
+                "confidence_band": f"±{CONFORMAL_Q * 100:.0f}%",
+                "interval_method": "split_conformal_90",
                 "model_used": model_metrics["best_model"],
                 "model_metrics": model_metrics["comparison"],
                 "currency": "INR",
@@ -183,9 +227,10 @@ def history():
             "predictions": [
                 {
                     "id": r.id,
-                    "area": r.area,
-                    "bedrooms": r.bedrooms,
-                    "bathrooms": r.bathrooms,
+                    "total_sqft": r.total_sqft,
+                    "bhk": r.bhk,
+                    "bath": r.bath,
+                    "location": r.location,
                     "predicted_price": r.predicted_price,
                     "confidence_low": r.confidence_low,
                     "confidence_high": r.confidence_high,
@@ -231,10 +276,13 @@ def metrics():
     return jsonify(
         {
             "dataset_size": model_metrics["dataset_size"],
+            "dataset_name": model_metrics.get("dataset_name"),
             "feature_count": model_metrics["feature_count"],
             "best_model": model_metrics["best_model"],
             "comparison": model_metrics["comparison"],
             "feature_importance": model_metrics.get("feature_importance", []),
+            "currency": "INR",
+            "unit": "lakhs",
         }
     )
 
