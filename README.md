@@ -76,7 +76,7 @@ Trained on 10,224 cleaned Bengaluru listings (238 locations one-hot encoded). Er
 - **pytest test suite** — health, prediction, validation, locations, history, stats
 
 ### API
-| Endpoint | Method | Description |
+| Endpoint | Method  | Description |
 |---|---|---|
 | `/` | GET | Health check + DB status |
 | `/predict` | POST | Predict house price (₹, with 90% interval) |
