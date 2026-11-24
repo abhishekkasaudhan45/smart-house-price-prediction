@@ -19,9 +19,11 @@ DATABASE_URL = os.environ.get(
     ),
 )
 
-# Render provides postgres:// but SQLAlchemy needs postgresql://
+# Convert URL to use psycopg (v3) driver for SQLAlchemy
 if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
+elif DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -44,7 +46,7 @@ def init_db():
     """Create all tables. Safe to call multiple times.
 
     If the predictions table exists with the old (pre-Bengaluru) schema,
-    drop and recreate it — history is demo data, mirroring migration 0002.
+    drop and recreate it, since history is demo data, mirroring migration 0002.
     """
     from sqlalchemy import inspect
 
