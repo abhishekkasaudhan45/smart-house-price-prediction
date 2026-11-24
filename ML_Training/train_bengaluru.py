@@ -1,11 +1,11 @@
 """Train 4 models on the Bengaluru House Data dataset (prices in INR lakhs)."""
 
+import os
 import warnings
-
+import joblib
+import pickle
 import numpy as np
 import pandas as pd
-import pickle
-import joblib
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
@@ -17,8 +17,11 @@ import xgboost as xgb
 
 warnings.filterwarnings("ignore")
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = os.path.join(BASE_DIR, "..", "Backend_API")
+
 print("Loading dataset...")
-df = pd.read_csv("Bengaluru_House_Data.csv")
+df = pd.read_csv(os.path.join(BASE_DIR, "Bengaluru_House_Data.csv"))
 print(f"Raw shape: {df.shape}")
 
 # === Cleaning ===
@@ -206,13 +209,13 @@ print(f"\nConformal interval: +/-{conformal_q*100:.1f}% (target 90% coverage)")
 print(f"Empirical coverage on test set: {covered*100:.1f}%")
 
 # === Save Artifacts (joblib compress=3 for smaller files) ===
-joblib.dump(best_model, "../Backend_API/model.pkl", compress=3)
+joblib.dump(best_model, os.path.join(BACKEND_DIR, "model.pkl"), compress=3)
 print(">> Saved model.pkl (compressed)")
 
-joblib.dump(scaler, "../Backend_API/scaler.pkl", compress=3)
+joblib.dump(scaler, os.path.join(BACKEND_DIR, "scaler.pkl"), compress=3)
 print(">> Saved scaler.pkl (compressed)")
 
-with open("../Backend_API/feature_columns.pkl", "wb") as f:
+with open(os.path.join(BACKEND_DIR, "feature_columns.pkl"), "wb") as f:
     pickle.dump(feature_cols, f)
 print(">> Saved feature_columns.pkl")
 
@@ -249,7 +252,7 @@ model_metrics = {
     "feature_importance": fi_list,
     "locations": locations,
 }
-with open("../Backend_API/model_metrics.pkl", "wb") as f:
+with open(os.path.join(BACKEND_DIR, "model_metrics.pkl"), "wb") as f:
     pickle.dump(model_metrics, f)
 print(">> Saved model_metrics.pkl")
 
@@ -269,7 +272,7 @@ ax.barh(fi_plot["Feature"], fi_plot["Importance"], color="#6366f1")
 ax.set_title(f"Feature Importance — {best_name} (Bengaluru House Data)")
 ax.set_xlabel("Importance")
 plt.tight_layout()
-plt.savefig("../Backend_API/feature_importance.png", dpi=120)
+plt.savefig(os.path.join(BACKEND_DIR, "feature_importance.png"), dpi=120)
 print(">> Saved feature_importance.png")
 
 fig, ax = plt.subplots(figsize=(8, 5))
@@ -281,7 +284,7 @@ ax.set_title("Model Comparison — RMSE (INR lakhs, lower is better)")
 ax.set_ylabel("RMSE (Rs lakhs)")
 plt.xticks(rotation=15, ha="right")
 plt.tight_layout()
-plt.savefig("../Backend_API/model_comparison.png", dpi=120)
+plt.savefig(os.path.join(BACKEND_DIR, "model_comparison.png"), dpi=120)
 print(">> Saved model_comparison.png")
 
 print("\n>> Training complete!")

@@ -1,11 +1,11 @@
 """Train 4 models on Kaggle House Prices dataset."""
 
+import os
 import warnings
-
+import joblib
+import pickle
 import numpy as np
 import pandas as pd
-import pickle
-import joblib
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
@@ -17,8 +17,11 @@ import xgboost as xgb
 
 warnings.filterwarnings("ignore")
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = os.path.join(BASE_DIR, "..", "Backend_API")
+
 print("Loading dataset...")
-df = pd.read_csv("Data.csv")
+df = pd.read_csv(os.path.join(BASE_DIR, "Data.csv"))
 print(f"Shape: {df.shape}")
 
 # === Feature Engineering ===
@@ -128,14 +131,14 @@ best_model = trained_models[best_name]
 print(f"\nBest model: {best_name} (lowest RMSE)")
 
 # === Save Artifacts (joblib compress=3 for smaller files) ===
-joblib.dump(best_model, "../Backend_API/model.pkl", compress=3)
+joblib.dump(best_model, os.path.join(BACKEND_DIR, "model.pkl"), compress=3)
 print(">> Saved model.pkl (compressed)")
 
-joblib.dump(scaler, "../Backend_API/scaler.pkl", compress=3)
+joblib.dump(scaler, os.path.join(BACKEND_DIR, "scaler.pkl"), compress=3)
 print(">> Saved scaler.pkl (compressed)")
 
 # Feature columns for API
-with open("../Backend_API/feature_columns.pkl", "wb") as f:
+with open(os.path.join(BACKEND_DIR, "feature_columns.pkl"), "wb") as f:
     pickle.dump(feature_cols, f)
 print(">> Saved feature_columns.pkl")
 
@@ -160,13 +163,13 @@ model_metrics = {
     "comparison": results,
     "feature_importance": fi_list,
 }
-with open("../Backend_API/model_metrics.pkl", "wb") as f:
+with open(os.path.join(BACKEND_DIR, "model_metrics.pkl"), "wb") as f:
     pickle.dump(model_metrics, f)
 print(">> Saved model_metrics.pkl")
 
 # Dummy label_encoders for backward compat (no categorical encoding needed)
 label_encoders = {}
-with open("../Backend_API/label_encoders.pkl", "wb") as f:
+with open(os.path.join(BACKEND_DIR, "label_encoders.pkl"), "wb") as f:
     pickle.dump(label_encoders, f)
 print(">> Saved label_encoders.pkl")
 

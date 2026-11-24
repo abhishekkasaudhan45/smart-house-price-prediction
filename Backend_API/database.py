@@ -1,8 +1,15 @@
 """Database configuration and session management."""
 
 import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
+
+# Load local environment files if present
+_root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(_root_dir, ".env.local"))
+load_dotenv(os.path.join(_root_dir, ".env"))
+load_dotenv()
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",

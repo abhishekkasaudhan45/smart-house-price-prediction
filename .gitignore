@@ -13,6 +13,9 @@ node_modules/
 
 # Environment
 .env
+.env*
+.env.local
+!.env.example
 .venv/
 venv/
 
@@ -26,4 +29,6 @@ Thumbs.db
 # Claude
 .claude/
 .vercel
-.env*
+
+AGENTS.md
+tasks/

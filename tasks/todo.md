@@ -16,7 +16,7 @@
 - [ ] Image size is reasonable (< 1.5GB)
 
 **Verification:**
-- [ ] `docker build -t test-predictor -f Backend_API/Dockerfile .`
+- [ ] `docker build -t test-predictor -f Backend_API/Dockerfile Backend_API`
 - [ ] `docker run -d -p 10000:10000 test-predictor && curl localhost:10000/`
 - [ ] `curl -X POST localhost:10000/predict -H "Content-Type: application/json" -d '{...}'`
 - [ ] `docker images | grep test-predictor` shows size

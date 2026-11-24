@@ -1,22 +1,26 @@
-from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS
+import os
 import pickle
 import joblib
-import numpy as np
-import os
+import pandas as pd
+from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
+from sqlalchemy import func
 
 from database import get_db, init_db
 from models import Prediction
-from sqlalchemy import func
 
 app = Flask(__name__)
 CORS(app)
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Load ML artifacts
-model = joblib.load("model.pkl")
-scaler = joblib.load("scaler.pkl")
-feature_columns = pickle.load(open("feature_columns.pkl", "rb"))
-model_metrics = pickle.load(open("model_metrics.pkl", "rb"))
+model = joblib.load(os.path.join(BASE_DIR, "model.pkl"))
+scaler = joblib.load(os.path.join(BASE_DIR, "scaler.pkl"))
+with open(os.path.join(BASE_DIR, "feature_columns.pkl"), "rb") as f:
+    feature_columns = pickle.load(f)
+with open(os.path.join(BASE_DIR, "model_metrics.pkl"), "rb") as f:
+    model_metrics = pickle.load(f)
 
 # Split-conformal 90% interval: relative residual quantile from calibration set
 CONFORMAL_Q = model_metrics["conformal_q"]
@@ -120,7 +124,7 @@ def build_feature_vector(total_sqft, bath, balcony, bhk, ready_to_move, location
             row.append(1)
         else:
             row.append(0)
-    return np.array([row])
+    return pd.DataFrame([row], columns=feature_columns)
 
 
 @app.route("/")
@@ -289,7 +293,7 @@ def metrics():
 
 @app.route("/feature-importance")
 def feature_importance():
-    image_path = os.path.join(os.path.dirname(__file__), "feature_importance.png")
+    image_path = os.path.join(BASE_DIR, "feature_importance.png")
     if os.path.exists(image_path):
         return send_file(image_path, mimetype="image/png")
     return jsonify({"error": "Feature importance image not found"}), 404

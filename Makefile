@@ -105,7 +105,7 @@ check: format lint test
 .PHONY: docker-build
 docker-build:
 	@echo "🐳 Building Docker image: $(IMAGE_NAME)..."
-	docker build -t $(IMAGE_NAME) -f $(BACKEND)/Dockerfile .
+	docker build -t $(IMAGE_NAME) -f $(BACKEND)/Dockerfile $(BACKEND)
 	@echo "✅ Image built! Run 'make docker-run' to start."
 
 .PHONY: docker-run

@@ -1,4 +1,6 @@
-const API_URL = window.location.hostname === "localhost" ? "http://localhost:10000" : "https://lucknow-house-price-api.onrender.com";
+const API_URL = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? "http://localhost:10000"
+    : "https://lucknow-house-price-api.onrender.com";
 
 const form = document.getElementById("predictionForm");
 const resultSection = document.getElementById("resultSection");
